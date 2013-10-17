@@ -1,0 +1,186 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<tasklist name="Install libgcrypt" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../tasklist_schema.xsd">
+	
+	<run id="0" name="check peer">
+		<!-- Check if peer is working -->
+        <command>sudo date</command> 
+        <arguments></arguments> 
+        <timeout>10</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output>2013</expected_output>
+        <stop_on_fail>true</stop_on_fail>
+	</run>
+	
+	<sequence enabled="true">
+	    <run id="0" name="Update M4 (1)">
+            <command>sudo rpm -e --nodeps m4</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="1" name="Update M4 (2)">
+            <command>wget http://ftp.gnu.org/gnu/m4/m4-latest.tar.gz</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="2" name="Update M4 (3)">
+            <command>tar xfvz m4-latest.tar.gz</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="3" name="Update M4 (4)">
+            <command>cd m4-1.4.16; ./configure --prefix=/usr</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="4" name="Update M4 (5)">
+            <command>cd m4-1.4.16; sudo make install</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="5" name="Update autoconf (1)">
+            <command>sudo rpm -e --nodeps autoconf</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="6" name="Update autoconf (2)">
+            <command>wget http://ftp.gnu.org/gnu/autoconf/autoconf-2.69.tar.gz</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="7" name="Update autoconf (3)">
+            <command>tar xfvz autoconf-2.69.tar.gz</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="8" name="Update autoconf (4)">
+            <command>cd autoconf-2.69; ./configure --prefix=/usr</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="9" name="Update autoconf (5)">
+            <command>cd autoconf-2.69; sudo make install</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="10" name="Install git">
+            <command>sudo yum install -y -t --nogpgcheck git</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="11" name="fig (1)">
+            <command>sudo touch /usr/bin/fig2dev</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="12" name="fig (2)">
+            <command>sudo chmod u+x /usr/bin/fig2dev</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="13" name="Install libgcrypt (1)">
+            <command>git clone git://git.gnupg.org/libgcrypt.git libgcrypt.git</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="14" name="Install libgcrypt (2)">
+            <command>cd libgcrypt.git; ./autogen.sh</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="15" name="Install libgcrypt (3)">
+            <command>cd libgcrypt.git;  ./configure --enable-maintainer-mode --prefix=$HOME/libgcrypt-dev</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="16" name="Install libgcrypt (4)">
+            <command>cd libgcrypt.git; sudo make</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="17" name="Install libgcrypt (5)">
+            <command>cd libgcrypt.git; sudo make install</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+	    
+	    <run id="18" name="Install libgcrypt (6)">
+            <command>cd libgcrypt.git; sudo make install</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+	    </run>
+    </sequence>
+</tasklist>

@@ -1,0 +1,635 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<tasklist name="Deploy GNUnet" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../tasklist_schema.xsd">
+	
+	<run id="0" name="check peer">
+		<!-- Check if peer is working -->
+        <command>sudo date</command> 
+        <arguments></arguments> 
+        <timeout>10</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output>2013</expected_output>
+        <stop_on_fail>true</stop_on_fail>
+	</run> 
+
+	<sequence  enabled="true">
+	<!-- Install buildtools -->
+	<run id="11" name="Install dependencies with yum : gcc">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>gcc</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>
+    <run id="12" name="Install dependencies with yum : make">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>make</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run> 
+	<run id="13" name="Install dependencies with yum : automake">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>automake</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>    
+    <run id="14" name="Install dependencies with yum : autoconf">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>autoconf</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>
+    <run id="15" name="Install dependencies with yum : gettext-devel">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>gettext-devel</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>		
+	<run id="16" name="Install dependencies with yum : texinfo">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>texinfo</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>
+    <run id="17" name="Install dependencies with yum : zlib-devel">
+      <command>sudo yum -y -t --nogpgcheck install</command> 
+      <arguments>zlib-devel</arguments> 
+      <timeout>0</timeout> 
+      <expected_return_code>0</expected_return_code>
+      <expected_output></expected_output>
+      <stop_on_fail>false</stop_on_fail>
+	</run>  
+    <run id="18" name="Install dependencies with yum : libgtop-devel">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>libgtop-devel</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>       	
+    </sequence>
+   	
+   	<sequence  enabled="true">
+	<!-- Install dependencies -->
+    <run id="21" name="Install dependencies with yum : gnutls-devel">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>gnutls-devel</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>
+    <run id="21" name="Install dependencies with yum : libidn-devel">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>libidn-devel</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>    
+	<run id="22" name="Install dependencies with yum : libgcrypt-devel">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>libgcrypt-devel</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>	
+    <run id="23" name="Install dependencies with yum : sqlite-devel">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>sqlite-devel</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>
+    <run id="24" name="Install dependencies with yum : postgresql-devel">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>postgresql-devel</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>  
+    <run id="25" name="Install dependencies with yum : mysql-devel">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>mysql-devel</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>      
+    <run id="26" name="Install dependencies with yum : libgsf-devel">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>libgsf-devel</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>
+   	<run id="27" name="Install dependencies with yum : libvorbis-devel">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>libvorbis-devel</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>	
+	</sequence>
+
+	<sequence enabled="true">
+	 <!-- Setup subversion -->
+    <run id="30" name="Install dependencies with yum : subversion">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>subversion</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>
+    <run id="31" name="Download GNUnet svn certificate">
+          <command>wget --no-check-certificate</command> 
+          <arguments>https://gnunet.org/svn/gnunet-planetlab/gplmt/contrib/gnunet-svn-cert</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>-1</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run> 
+    <run id="32" name="Install GNUnet svn certificate">
+          <command>mkdir .subversion; mkdir .subversion/auth; mkdir .subversion/auth/svn.ssl.server; cp gnunet-svn-cert .subversion/auth/svn.ssl.server/2bd0c10624fe8b217987bb45f1ec55bf</command> 
+          <arguments></arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>-1</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    </run>   
+	</sequence>	
+	
+	<sequence >   
+	<!-- Install depencies from source -->
+    	<sequence  enabled="true">
+     	<!-- Install libtool -->
+      		<run id="41" name="Download libtool">
+            	<command>mkdir libtool; cd libtool; wget </command> 
+	            <arguments>http://ftp.gnu.org/gnu/libtool/libtool-2.4.2.tar.gz</arguments> 
+    	        <timeout>0</timeout> 
+        	    <expected_return_code>0</expected_return_code>
+            	<expected_output></expected_output>
+            	<stop_on_fail>true</stop_on_fail>
+      		</run>
+      		<run id="42" name="Unpack libtool">
+            	<command>cd libtool; tar xfvz </command> 
+	            <arguments>libtool-2.4.2.tar.gz</arguments> 
+    	        <timeout>0</timeout> 
+        	    <expected_return_code>0</expected_return_code>
+            	<expected_output></expected_output>
+	            <stop_on_fail>true</stop_on_fail>
+      	</run>
+      	<run id="43" name="Configure libtool">
+    	        <command>cd libtool/libtool-2.4.2; ./configure </command> 
+        	    <arguments>--prefix=/usr/local </arguments> 
+	            <timeout>0</timeout> 
+   	        	 <expected_return_code>0</expected_return_code>
+    	        <expected_output></expected_output>
+        	    <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="44" name="Install libtool">
+            <command>cd libtool/libtool-2.4.2; sudo make install</command>
+            <arguments> </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+    </sequence>
+     <sequence enabled="true">
+     <!-- Install glpk -->
+      <run id="51" name="Download glpk">
+            <command>mkdir glpk; cd glpk; wget </command> 
+            <arguments>http://ftp.gnu.org/gnu/glpk/glpk-4.47.tar.gz</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="52" name="Unpack glpk">
+            <command>cd glpk; tar -xzvf</command> 
+            <arguments>glpk-4.47.tar.gz</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="53" name="Configure glpk">
+            <command>cd glpk/glpk-4.47; ./configure </command> 
+            <arguments> --with-gnutls</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="54" name="Install glpk">
+            <command>cd glpk/glpk-4.47; sudo make install</command>
+            <arguments> </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+    </sequence>
+     <sequence  enabled="true">
+     <!-- Install libgpg-error -->
+      <run id="61" name="Download libgpg-error">
+            <command>mkdir libgpg-error; cd libgpg-error; wget </command> 
+            <arguments>ftp://ftp.gnupg.org/gcrypt/libgpg-error/libgpg-error-1.10.tar.bz2</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="62" name="Unpack libgpg-error">
+            <command>cd libgpg-error; tar -xjvf</command> 
+            <arguments>libgpg-error-1.10.tar.bz2</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="63" name="Configure libgpg-error">
+            <command>cd libgpg-error/libgpg-error-1.10; ./configure </command> 
+            <arguments>--prefix=/usr</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="64" name="Install libgpg-error">
+            <command>cd libgpg-error/libgpg-error-1.10; sudo make install</command>
+            <arguments> </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+    </sequence>      
+     <sequence  enabled="true">
+     <!-- Install libgcrypt -->
+      <run id="71" name="Download libgcrypt">
+            <command>mkdir libgcrypt; cd libgcrypt; wget </command> 
+            <arguments>ftp://ftp.gnupg.org/gcrypt/libgcrypt/libgcrypt-1.5.0.tar.bz2</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="72" name="Unpack libgcrypt">
+            <command>cd libgcrypt; tar -xjvf</command> 
+            <arguments>libgcrypt-1.5.0.tar.bz2</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="73" name="Configure libgcrypt">
+            <command>cd libgcrypt/libgcrypt-1.5.0; ./configure </command> 
+            <arguments>--prefix=/usr</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="74" name="Install libgcrypt">
+            <command>cd libgcrypt/libgcrypt-1.5.0; sudo make install</command>
+            <arguments> </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+    </sequence>     
+     <sequence  enabled="true">
+     <!-- Install libcurl -->
+      <run id="81" name="Download libcurl">
+            <command>mkdir libcurl; cd libcurl; wget </command> 
+            <arguments>http://curl.haxx.se/download/curl-7.26.0.tar.gz</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="82" name="Unpack libcurl">
+            <command>cd libcurl; tar -xzvf</command> 
+            <arguments>curl-7.26.0.tar.gz</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="83" name="Configure libcurl">
+            <command>cd libcurl/curl-7.26.0; ./configure </command> 
+            <arguments></arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="84" name="Install libcurl">
+            <command>cd libcurl/curl-7.26.0; sudo make install</command>
+            <arguments> </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+    </sequence> 
+     <sequence enabled="true">
+     <!-- Install libunistring -->
+      <run id="85" name="Download libunistring">
+            <command>mkdir libunistring; cd libunistring; wget </command> 
+            <arguments>http://ftp.gnu.org/gnu/libunistring/libunistring-0.9.3.tar.gz</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="86" name="Unpack libunistring">
+            <command>cd libunistring; tar -xzvf</command> 
+            <arguments>libunistring-0.9.3.tar.gz</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="87" name="Configure libunistring">
+            <command>cd libunistring/libunistring-0.9.3; ./configure </command> 
+            <arguments></arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="88" name="Install libunistring">
+            <command>cd libunistring/libunistring-0.9.3; sudo make install</command>
+            <arguments> </arguments> 
+            <timeout>0</timeout> 
+            <!-- Return code can be 0 if package was installed and 1 if not -->
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+    </sequence>
+    
+    <sequence>
+       	<run id="91" name="Remove conflicting packages : libgcrypt">
+          <command>sudo rpm -e --nodeps</command> 
+          <arguments>libgcrypt</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>-1</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    	</run>	
+    	<run id="91" name="Remove conflicting packages : libgpg-error">
+          <command>sudo rpm -e --nodeps</command> 
+          <arguments>libgpg-error</arguments> 
+          <timeout>0</timeout> 
+          <!-- Return code can be 0 if package was installed and 1 if not -->
+          <expected_return_code>-1</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>false</stop_on_fail>
+    	</run>	
+	</sequence>
+
+	 <sequence enabled="true">
+     <!-- Install libextractor -->
+      <run id="101" name="Download libextractor">
+            <command>mkdir libextractor; cd libextractor; wget </command> 
+            <arguments>ftp://ftp.gnu.org/gnu/libextractor/libextractor-0.6.3.tar.gz</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="102" name="Unpack libextractor">
+            <command>cd libextractor; tar -xzvf</command> 
+            <arguments>libextractor-0.6.3.tar.gz</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="103" name="Configure libextractor">
+            <command>cd libextractor/libextractor-0.6.3; ./configure </command> 
+            <arguments>--prefix=/usr/local </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="104" name="Install libextractor">
+            <command>cd libextractor/libextractor-0.6.3; sudo make install</command>
+            <arguments> </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+    </sequence>  
+    
+   	<sequence enabled="true">
+   	<!-- Install libmicrohttpd and dependencies -->
+        <run id="111" name="Install dependencies with yum : gmp-devel">
+  			<!-- Install gmp and gmp devel for libnettle and gnutls -->
+          	<command>sudo yum -y -t --nogpgcheck install</command> 
+          	<arguments>gmp-devel</arguments> 
+          	<timeout>0</timeout> 
+          	<expected_return_code>0</expected_return_code>
+          	<expected_output></expected_output>
+          	<stop_on_fail>false</stop_on_fail>
+    	</run>	
+    <sequence enabled="true">
+     	<!-- Install libnettle required for GnuTLS-->
+      	<run id="112" name="Download libnettle">
+            <command>mkdir libnettle; cd libnettle; wget </command> 
+            <arguments>http://ftp.gnu.org/gnu/nettle/nettle-2.5.tar.gz</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      	</run>
+      	<run id="113" name="Unpack libnettle">
+            <command>cd libnettle; tar -xzvf</command> 
+            <arguments>nettle-2.5.tar.gz</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      	</run>
+      	<run id="114" name="Configure libnettle">
+            <command>cd libnettle/nettle-2.5; ./configure </command> 
+            <arguments></arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      	</run>
+      	<run id="115" name="Build libnettle">
+            <command>cd libnettle/nettle-2.5; make all</command>
+            <arguments> </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      	</run>      	
+      	<run id="116" name="Install libnettle">
+            <command>cd libnettle/nettle-2.5; sudo make install</command>
+            <arguments> </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      	</run>
+	 </sequence>   
+     <!-- Install GnuTLS for MHD -->
+      <run id="117" name="Download GnuTLS">
+            <command>mkdir gnutls; cd gnutls; wget </command> 
+            <arguments>http://ftp.gnu.org/gnu/gnutls/gnutls-2.12.20.tar.bz2</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="118" name="Unpack gnutls">
+            <command>cd gnutls; tar -xvjf</command> 
+            <arguments>gnutls-2.12.20.tar.bz2</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="119" name="Configure gnutls">
+            <command>cd gnutls/gnutls-2.12.20; ./configure</command> 
+            <arguments>--without-p11-kit</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="120" name="Install gnutls">
+            <command>cd gnutls/gnutls-2.12.20; sudo make install</command>
+            <arguments> </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+    </sequence>   
+   	<sequence >
+     <!-- Install libmicrohttpd  -->
+      <run id="121" name="Download ">
+            <command>mkdir libmicrohttpd; cd libmicrohttpd; wget </command> 
+            <arguments>ftp://ftp.gnu.org/gnu/libmicrohttpd/libmicrohttpd-0.9.21.tar.gz</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="122" name="Unpack libmicrohttpd">
+            <command>cd libmicrohttpd; tar -xzvf</command> 
+            <arguments>libmicrohttpd-0.9.21.tar.gz</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="123" name="Configure libmicrohttpd">
+            <command>cd libmicrohttpd/libmicrohttpd-0.9.21; ./configure </command> 
+            <arguments>--prefix=/usr/local </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="124" name="Install libmicrohttpd">
+            <command>cd libmicrohttpd/libmicrohttpd-0.9.21; sudo make install</command>
+            <arguments> </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+    </sequence>    
+  </sequence>
+    
+    <sequence enabled="true">
+     <!-- Install GNUnet from svn -->
+      <run id="131" name="Download GNUnet">
+            <command>svn checkout</command> 
+            <arguments> https://gnunet.org/svn/gnunet</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="132" name="Bootstrap GNUnet" enabled="true">
+            <command>cd gnunet; libtoolize; ./bootstrap</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="133" name="Configure GNUnet" enabled="true">
+            <command>cd gnunet; export LD_LIBRARY_PATH=/usr/local/lib; ./configure </command> 
+            <arguments>--prefix=$HOME/gnbuild --with-extractor=/usr/local  --with-curl=/usr/local --with-mysql=/usr/lib/mysql --enable-logging=verbose</arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="134" name="Install GNUnet">
+            <command>cd gnunet; export LD_LIBRARY_PATH=/usr/local/lib; make install</command>
+            <arguments> </arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+     <sequence enabled="true">
+     <!-- Postinstallation setup -->
+      <run id="141" name="Create GNUnet directory" enabled="true">
+            <command>mkdir .gnunet; touch .gnunet/gnunet.conf</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="142" name="Set GNUNET_PREFIX" enabled="true">
+            <command>echo -e "export GNUNET_PREFIX=$HOME/gnbuild \n" >> ~/.bashrc</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+      <run id="143" name="Configure GNUnet" enabled="true">
+            <command>echo -e "export PATH=$PATH:$GNUNET_PREFIX/bin \n" >> ~/.bashrc</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout> 
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+      </run>
+    </sequence>	    
+    </sequence>	
+</tasklist>

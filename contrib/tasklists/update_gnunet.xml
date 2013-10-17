@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<tasklist name="Update GNUnet to SVN HEAD" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../tasklist_schema.xsd">
+	<run id="0" name="check peer">
+		<!-- Check if peer is working -->
+        <command>sudo date</command> 
+        <arguments></arguments> 
+        <timeout>10</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output>2013</expected_output>
+        <stop_on_fail>true</stop_on_fail>
+	</run> 
+	<run id="1" name="Uninstall GNUnet" enabled="false">
+        <command>cd gnunet; make uninstall</command> 
+        <arguments></arguments> 
+        <timeout>0</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output></expected_output>
+        <stop_on_fail>true</stop_on_fail>
+	</run>
+	<run id="2" name="Update GNUnet">
+        <command>cd gnunet; svn up</command> 
+        <arguments></arguments> 
+        <timeout>0</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output></expected_output>
+        <stop_on_fail>true</stop_on_fail>
+	</run> 
+	<run id="3" name="Install GNUnet">
+        <command>cd gnunet; make install</command> 
+        <arguments></arguments> 
+        <timeout>0</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output></expected_output>
+        <stop_on_fail>true</stop_on_fail>
+	</run>
+</tasklist>

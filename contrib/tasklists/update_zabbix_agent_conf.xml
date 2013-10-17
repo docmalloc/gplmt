@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<tasklist name="Deploy zabbix agent" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../tasklist_schema.xsd">
+	
+	<run id="0" name="check peer">
+		<!-- Check if peer is working -->
+        <command>sudo date</command> 
+        <arguments></arguments> 
+        <timeout>10</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output>2013</expected_output>
+        <stop_on_fail>true</stop_on_fail>
+	</run>
+	
+	<sequence enabled="true">
+	    <run id="1" name="kill any running zabbix agent">
+            <command>killall</command> 
+            <arguments>zabbix_agentd</arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>false</stop_on_fail>
+	    </run>
+		<put id="2" name="put gnunet.conf">
+			<source>contrib/zabbix_agentd.conf</source>
+			<destination>/home/tumple_gnunet/zabbix_agentd.conf</destination>
+			<stop_on_fail>true</stop_on_fail>
+		</put> 
+		
+		<run id="10" name="start agent">
+            <command>/usr/local/sbin/zabbix_agentd -c ~/zabbix_agentd.conf</command> 
+            <arguments></arguments> 
+            <timeout>0</timeout>
+            <expected_return_code>0</expected_return_code>
+            <expected_output></expected_output>
+            <stop_on_fail>true</stop_on_fail>
+	    </run>
+    </sequence>
+</tasklist>

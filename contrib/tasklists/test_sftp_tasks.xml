@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tasklist name="remote put/get test task list" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../tasklist_schema.xsd">
+	<put id="0" name="put testfile">
+		<source>/tmp/test.file</source>
+		<destination>/tmp/put.file</destination>
+		<stop_on_fail>true</stop_on_fail>
+	</put> 
+	<get id="1" name="get testfile">
+		<source>/tmp/put.file</source>
+		<destination>/tmp/</destination>
+		<stop_on_fail>true</stop_on_fail>
+	</get> 
+</tasklist>

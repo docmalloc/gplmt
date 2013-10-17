@@ -1,0 +1,139 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+<xs:element name="tasklist" type="tasklist" />
+<xs:complexType name="tasklist">
+  <xs:sequence>
+  	<xs:element name="options" minOccurs="0" maxOccurs="1" />
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="sequence" type="sequence" />
+      <xs:element name="parallel" type="parallel" />
+      <xs:element name="link" type="link" />
+      <xs:element name="run" type="run" />
+      <xs:element name="run_per_host" type="run_per_host" />      
+      <xs:element name="monitor" type="monitor" />
+      <xs:element name="put" type="put" />
+      <xs:element name="get" type="get" />
+    </xs:choice>
+  </xs:sequence>
+  <xs:attribute name="name" type="xs:string"/>
+  <xs:attribute name="enabled" type="xs:boolean"/>
+</xs:complexType>
+
+<xs:element name="options">
+  <xs:complexType>
+    <xs:sequence>
+      <xs:element name="target" type="xs:string"/>
+      <xs:element name="log_dir" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+</xs:element>
+
+<xs:complexType name="link">
+  <xs:sequence>
+    <xs:element name="task_file" type="xs:string"/>
+    <xs:element name="timeout" type="xs:integer"/>
+    <xs:element name="stop_on_fail" type="xs:boolean"/>
+  </xs:sequence>
+  <xs:attribute name="name" type="xs:string"/>
+  <xs:attribute name="enabled" type="xs:boolean"/>
+</xs:complexType>
+
+<xs:complexType name="sequence">
+  <xs:sequence>
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="sequence" type="sequence" />
+      <xs:element name="parallel" type="parallel" />
+      <xs:element name="link" type="link" />
+      <xs:element name="run" type="run" />
+      <xs:element name="run_per_host" type="run_per_host" />      
+      <xs:element name="monitor" type="monitor" />
+      <xs:element name="put" type="put" />
+      <xs:element name="get" type="get" />
+    </xs:choice>
+  </xs:sequence>
+  <xs:attribute name="name" type="xs:string"/>
+  <xs:attribute name="enabled" type="xs:boolean"/>
+</xs:complexType>
+
+<xs:complexType name="parallel">
+  <xs:sequence>
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="sequence" type="sequence" />
+      <xs:element name="parallel" type="parallel" />
+      <xs:element name="link" type="link" />
+      <xs:element name="run" type="run" />
+      <xs:element name="run_per_host" type="run_per_host" />
+      <xs:element name="monitor" type="monitor" />
+      <xs:element name="put" type="put" />
+      <xs:element name="get" type="get" />
+    </xs:choice>
+  </xs:sequence>
+  <xs:attribute name="name" type="xs:string"/>
+  <xs:attribute name="enabled" type="xs:boolean"/>
+</xs:complexType>
+
+<xs:complexType name="run">
+  <xs:sequence>
+    <xs:element name="command" type="xs:string"/>
+    <xs:element name="arguments" type="xs:string"/>
+    <xs:element name="timeout" type="xs:integer"/>
+    <xs:element name="expected_return_code"  type="xs:integer"/>
+    <xs:element name="expected_output" type="xs:string"/>
+    <xs:element name="stop_on_fail" type="xs:boolean"/>
+  </xs:sequence>
+  <xs:attribute name="id" type="xs:integer"/>  
+  <xs:attribute name="name" type="xs:string"/>
+  <xs:attribute name="enabled" type="xs:boolean"/>
+</xs:complexType>
+
+<xs:complexType name="run_per_host">
+  <xs:sequence>
+    <xs:element name="command_file" type="xs:string"/>
+    <xs:element name="output_prefix" type="xs:string"/>
+    <xs:element name="timeout" type="xs:integer"/>
+    <xs:element name="expected_return_code"  type="xs:integer"/>
+    <xs:element name="expected_output" type="xs:string"/>
+    <xs:element name="stop_on_fail" type="xs:boolean"/>
+  </xs:sequence>
+  <xs:attribute name="id" type="xs:integer"/>  
+  <xs:attribute name="name" type="xs:string"/>
+  <xs:attribute name="enabled" type="xs:boolean"/>
+</xs:complexType>
+
+<xs:complexType name="monitor">
+  <xs:sequence>
+    <xs:element name="command" type="xs:string"/>
+    <xs:element name="arguments" type="xs:string"/>
+    <xs:element name="timeout" type="xs:integer"/>
+    <xs:element name="expected_return_code"  type="xs:integer"/>
+    <xs:element name="expected_output" type="xs:string"/>
+    <xs:element name="stop_on_fail" type="xs:boolean"/>
+  </xs:sequence>
+  <xs:attribute name="id" type="xs:integer"/>
+  <xs:attribute name="name" type="xs:string"/>  
+  <xs:attribute name="enabled" type="xs:boolean"/>
+</xs:complexType>
+
+<xs:complexType name="put">
+  <xs:sequence>
+    <xs:element name="source" type="xs:string"/>
+    <xs:element name="destination" type="xs:string"/>
+    <xs:element name="stop_on_fail" type="xs:boolean"/>
+  </xs:sequence>
+  <xs:attribute name="id" type="xs:integer"/>
+  <xs:attribute name="name" type="xs:string"/>
+  <xs:attribute name="enabled" type="xs:boolean"/>
+</xs:complexType>
+
+<xs:complexType name="get">
+  <xs:sequence>
+    <xs:element name="source" type="xs:string"/>
+    <xs:element name="destination" type="xs:string"/>
+    <xs:element name="stop_on_fail" type="xs:boolean"/>
+  </xs:sequence>
+  <xs:attribute name="id" type="xs:integer"/>
+  <xs:attribute name="name" type="xs:string"/>
+  <xs:attribute name="enabled" type="xs:boolean"/>
+</xs:complexType>
+
+</xs:schema>

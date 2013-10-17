@@ -1,0 +1,4 @@
+# Format: <hostname>;<cmd>
+# Default command if hostname is not included : <empty>;<default cmd>
+planetlab10.millennium.berkeley.edu; hostname -f
+;date 

@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<tasklist name="Check libgcrypt version" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../tasklist_schema.xsd">
+	<options>
+ 	<target>planetlab</target>
+ 	<log_dir></log_dir>>
+ 	</options>
+
+	<run id="0" name="check peer">
+		<!-- Check if peer is working -->
+        <command>sudo date</command> 
+        <arguments></arguments> 
+        <timeout>10</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output>2013</expected_output>
+        <stop_on_fail>true</stop_on_fail>
+	</run>
+
+	<sequence name="Check libgcrypt version" enabled="true">
+		<run id="91" name="Checking version">
+		    <command>libgcrypt-config --version</command> 
+		    <arguments></arguments> 
+		    <timeout>0</timeout> 
+		    <expected_return_code>0</expected_return_code>
+		    <expected_output>1.6.0</expected_output>
+		    <stop_on_fail>true</stop_on_fail>
+		</run>	
+    </sequence>
+</tasklist>

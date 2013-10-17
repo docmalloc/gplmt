@@ -1,0 +1,111 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<tasklist name="Install buildslave" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../tasklist_schema.xsd">
+	
+	<run id="0" name="check peer">
+		<!-- Check if peer is working -->
+        <command>sudo date</command> 
+        <arguments></arguments> 
+        <timeout>30</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output>2013</expected_output>
+        <stop_on_fail>true</stop_on_fail>
+	</run> 
+
+
+	<sequence enabled="true">
+	<!-- Install dependencies -->
+	<run id="1" name="Install gcc">
+          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <arguments>gcc</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>true</stop_on_fail>
+    </run>
+	<run id="1" name="Install python distribute">
+          <command>curl http://python-distribute.org/distribute_setup.py | sudo python</command> 
+          <arguments></arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>true</stop_on_fail>
+    </run>
+	<run id="2" name="Download zope.interface 3.8.0">
+          <command>mkdir ~/buildslave; cd ~/buildslave; wget</command> 
+          <arguments>http://pypi.python.org/packages/source/z/zope.interface/zope.interface-3.8.0.tar.gz#md5=8ab837320b4532774c9c89f030d2a389n</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>true</stop_on_fail>
+    </run>
+    <run id="3" name="Unpack zope.interface 3.8.0">
+          <command>cd ~/buildslave; tar xfvz </command> 
+          <arguments>zope.interface-3.8.0.tar.gz</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>true</stop_on_fail>
+    </run>      
+    <run id="4" name="Install zope.interface 3.8.0">
+          <command>cd ~/buildslave/zope.interface-3.8.0/; sudo python </command> 
+          <arguments>setup.py install</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>true</stop_on_fail>
+    </run>
+    <sequence enabled="true">
+	<run id="5" name="Download twisted 12.1.0">
+          <command>mkdir ~/buildslave; cd ~/buildslave; wget</command> 
+          <arguments>http://pypi.python.org/packages/source/T/Twisted/Twisted-12.1.0.tar.bz2</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>true</stop_on_fail>
+    </run>
+    <run id="6" name="Unpack twisted 12.1.0">
+          <command>cd ~/buildslave; tar jvxf </command> 
+          <arguments>Twisted-12.1.0.tar.bz2</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>true</stop_on_fail>
+    </run>      
+    <run id="7" name="Install twisted 12.1.0">
+          <command>cd ~/buildslave/Twisted-12.1.0/; sudo python </command> 
+          <arguments>setup.py install</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>true</stop_on_fail>
+    </run>    
+    </sequence>
+    </sequence>
+    
+    <sequence enabled="true">
+    <run id="8" name="Download buildslave">
+          <command>cd ~/buildslave; wget </command> 
+          <arguments>http://buildbot.googlecode.com/files/buildbot-slave-0.8.6p1.tar.gz</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>true</stop_on_fail>
+    </run>
+    <run id="9" name="Unpack buildslave">
+          <command>cd ~/buildslave; tar xvfz </command> 
+          <arguments>buildbot-slave-0.8.6p1.tar.gz</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>true</stop_on_fail>
+    </run>
+     <run id="10" name="Install buildslave">
+          <command>cd ~/buildslave/buildbot-slave-0.8.6p1; sudo python setup.py </command> 
+          <arguments>install</arguments> 
+          <timeout>0</timeout> 
+          <expected_return_code>0</expected_return_code>
+          <expected_output></expected_output>
+          <stop_on_fail>true</stop_on_fail>
+    </run>        
+    </sequence>	    
+</tasklist>

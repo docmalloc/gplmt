@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tasklist name="Restart buildslaves on Planetlab nodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../tasklist_schema.xsd">
+	<run id="0" name="check peer">
+		<!-- Check if peer is working -->
+        <command>sudo date</command> 
+        <arguments></arguments> 
+        <timeout>10</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output>2013</expected_output>
+        <stop_on_fail>true</stop_on_fail>
+	</run> 
+	
+	<run id="2" name="restart buildslave" enabled="true">
+		<command>buildslave</command>
+		<arguments>restart ./bot</arguments> 
+        <timeout>60</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output></expected_output>
+        <stop_on_fail>false</stop_on_fail>
+    </run>			
+</tasklist>
+

@@ -1,0 +1,10 @@
+#!/bin/sh
+
+if [ "$1" = "" ]; then
+	echo "Planetlab password required"
+	exit 1
+fi	
+
+../gplmt.py -c ../contrib/tumple_gnunet.conf -a -p $1 -t ../contrib/tasklists/check_node.xml | grep failure | awk '{print $1}'
+
+

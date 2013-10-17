@@ -1,0 +1,28 @@
+    <host name="[name]">
+        <host>[name]</host>
+        <proxy/>
+        <useip>0</useip>
+        <ip/>
+        <dns>[name]</dns>
+        <port>10050</port>
+        <status>0</status>
+        <ipmi_authtype>-1</ipmi_authtype>
+        <ipmi_privilege>2</ipmi_privilege>
+        <ipmi_username/>
+        <ipmi_password/>
+        <templates>
+            <template>
+                <name>Template PL</name>
+            </template>
+        </templates>
+        <groups>
+            <group>
+                <name>Planetlab Servers</name>
+            </group>
+        </groups>
+        <applications/>
+        <items/>
+        <discovery_rules/>
+        <macros/>
+        <inventory/>
+    </host>

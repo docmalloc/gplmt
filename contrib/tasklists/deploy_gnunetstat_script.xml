@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<tasklist name="Deploy GNUnet Statistics Script" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../tasklist_schema.xsd">
+	    <put id="0" name="put stat-cached.sh">
+		    <source>contrib/stat-cached.sh</source>
+		    <destination>~/stat-cached.sh</destination>
+		    <stop_on_fail>true</stop_on_fail>
+	    </put>
+</tasklist>

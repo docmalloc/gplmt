@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tasklist name="Setup buildslave on Planetlab nodes" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../tasklist_schema.xsd">
+	<run id="0" name="check peer">
+		<!-- Check if peer is working -->
+        <command>sudo date</command> 
+        <arguments></arguments> 
+        <timeout>10</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output>2013</expected_output>
+        <stop_on_fail>false</stop_on_fail>
+	</run> 
+	
+	<run id="2" name="Delete old configuration">
+		<command>rm -rf bot</command>
+		<arguments></arguments> 
+        <timeout>10</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output></expected_output>
+        <stop_on_fail>false</stop_on_fail>		
+	</run>  
+	
+	<run_per_host id="1" name="setup buildslave">
+		<command_file>result.tasks</command_file>
+		<output_prefix>contrib/tests/result_</output_prefix>
+        <timeout>30</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output></expected_output>
+        <stop_on_fail>true</stop_on_fail>		
+	</run_per_host>
+	<run id="2" name="start buildslave">
+		<command>buildslave start ./bot</command>
+		<arguments></arguments> 
+        <timeout>60</timeout>
+        <expected_return_code>0</expected_return_code>
+        <expected_output></expected_output>
+        <stop_on_fail>true</stop_on_fail>		
+	</run>  
+</tasklist>
