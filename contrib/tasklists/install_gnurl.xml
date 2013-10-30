@@ -12,7 +12,7 @@
 
 
 <run id="1" name="Download gnurl" enabled="false">
-          <command>wget</command> 
+          <command>wget --no-check-certificate</command> 
           <arguments>https://gnunet.org/sites/default/files/gnurl-7.33.0.tar_0.bz2</arguments> 
           <timeout>30</timeout> 
           <expected_return_code>0</expected_return_code>
