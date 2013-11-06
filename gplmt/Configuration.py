@@ -41,7 +41,7 @@ class Configuration:
         assert (None != logger)
         self.gplmt_filename = filename
         self.gplmt_logger = logger
-        self.gplmt_parallelism = 0
+        self.gplmt_parallelism = sys.maxint
         self.gplmt_notifications = ""
         self.gplmt_taskfile = None
         self.gplmt_nodesfile = None

@@ -25,7 +25,9 @@ try:
     import Util
     import sys
     import os
+    import re
     import gplmt
+    from datetime import datetime
     from xml.parsers import expat  
     from minixsv import pyxsval as xsv 
     from elementtree import ElementTree
@@ -76,6 +78,11 @@ class Task:
         self.dest = None
         self.command_file = None
         self.output_prefix = None
+        self.node = ""
+        self.start_absolute = datetime.min
+        self.stop_absolute = datetime.max
+        self.start_relative = 0
+        self.stop_relative = sys.maxint
         
     def copy (self):
         t = Task ()
@@ -93,6 +100,11 @@ class Task:
         t.dest = self.dest
         t.command_file = self.command_file
         t.output_prefix = self.output_prefix
+        t.node = self.node
+        t.start_absolute = self.start_absolute
+        t.stop_absolute = self.stop_absolute
+        t.start_relative = self.start_relative
+        t.stop_relative = self.stop_relative
         return t
     def log (self):
         glogger.log ("Task " + str(self.id) + ": " + self.name)
@@ -119,6 +131,12 @@ class Taskset:
     def __init__(self):
         self.set = list()
 
+def parse_relative (text):
+    regex  = re.compile('(?P<sign>-?)P(?:(?P<years>\d+)Y)?(?:(?P<months>\d+)M)?(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?(?:(?P<seconds>\d+)S)?)?')
+    duration = regex.match(text).groupdict(0)
+    
+    return int(duration['seconds']) + 60 * (int(duration['minutes']) + 60 * (int(duration['hours']) + 24 * \
+    (int(duration['days']) + 31 * int(duration['months']) + 365 * int(duration ['years']))))
 
 def handle_task (elem, tasks):
     t = Task ()
@@ -194,6 +212,38 @@ def handle_task (elem, tasks):
             t.dest = child.text
             if ('' != g_configuration.gplmt_userdir and Operation.get == t.type):
                 t.dest = os.path.join(g_configuration.gplmt_userdir, os.path.basename(t.dest))
+        
+        if ((child.tag == "node") and (child.text != None)):
+            t.node = child.text
+            print "Node: " + t.node
+            
+        if ((child.tag == "start_absolute") and (child.text != None)):
+            try:
+                t.start_absolute = datetime.strptime(child.text, "%Y-%m-%dT%H:%M:%S")
+            except ValueError:
+                print "Invalid absolute start time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name
+            print "start_absolute: " + t.start_absolute.strftime("%A, %d. %B %Y %I:%M%p")
+        
+        if ((child.tag == "stop_absolute") and (child.text != None)):
+            try:
+                t.stop_absolute = datetime.strptime(child.text, "%Y-%m-%dT%H:%M:%S")
+            except ValueError:
+                print "Invalid absolute stop time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name
+            print "stop_absolute: " + t.stop_absolute.strftime("%A, %d. %B %Y %I:%M%p")
+                
+        if ((child.tag == "start_relative") and (child.text != None)):
+            try:
+                t.start_relative = parse_relative(child.text)
+            except ValueError:
+                print "Invalid relative start time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name
+            print "start_relative: " + str(t.start_relative)
+            
+        if ((child.tag == "stop_relative") and (child.text != None)):
+            try:
+                t.stop_relative = parse_relative(child.text)
+            except ValueError:
+                print "Invalid relative stop time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name
+            print "stop_relative: " + str(t.stop_relative)
 
     if (False == t.check()):
         print "Parsed invalid task with id " + str (t.id) + " name '" + t.name + "'"

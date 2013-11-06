@@ -31,6 +31,7 @@ import select
 import signal
 import inspect
 import subprocess
+import datetime
 
 try:
     import gplmt.Configuration as Configuration
@@ -93,7 +94,8 @@ class AbstractWorker(threading.Thread):
         threading.Thread.__init__(self)
         self.threadID = threadID
         self.node = node
-        self.tasks = tasks    
+        self.tasks = tasks
+        self.timer = None
     def connect (self):
         raise NotImplementedError (inspect.stack()[0][3]) 
     def disconnect (self):       
@@ -105,8 +107,10 @@ class AbstractWorker(threading.Thread):
     def exec_put (self, task):
         raise NotImplementedError (inspect.stack()[0][3]) 
     def exec_get (self, task):
-        raise NotImplementedError (inspect.stack()[0][3]) 
-    def run(self):    
+        raise NotImplementedError (inspect.stack()[0][3])
+    def interrupt_task (self):
+        raise NotImplementedError (inspect.stack()[0][3])
+    def run(self):   
         global interrupt
         tasklist_success = True
         # Connecting
@@ -130,8 +134,41 @@ class AbstractWorker(threading.Thread):
         if (interrupt):
             g_notifications.tasklist_completed (self.node, self.tasks, Tasks.Taskresult.user_interrupt, "")                        
         # Executing Tasks 
-        while (None != task and not interrupt):            
-            g_logger.log (self.node.hostname + " : Running task id " +str(task.id)+" '" + task.name + "'")                        
+        while (None != task and not interrupt):
+        
+            if (None != self.timer):
+                self.timer.cancel()
+                self.timer = None
+        
+            if (task.node and task.node != self.node.hostname):
+                g_logger.log (self.node.hostname + " : Ignoring task due to set node attribute");
+                task = self.tasks.get()
+                continue
+                
+            delta = int(max((task.start_absolute - datetime.datetime.now()).total_seconds(), task.start_relative))
+            
+            if (delta > 0):
+                g_logger.log (self.node.hostname + " : Continuing execution in " + str(delta) + " seconds")
+                for x in range(0, delta):
+                    time.sleep(1) 
+                    if (interrupt):
+                        g_notifications.tasklist_completed (self.node, self.tasks, Tasks.Taskresult.user_interrupt, "")
+                        g_notifications.task_completed (self.node, task, Tasks.Taskresult.user_interrupt, "task was interrupted", "")
+                        return
+                        
+                                                                     
+            
+            g_logger.log (self.node.hostname + " : Running task id " +str(task.id)+" '" + task.name + "'")     
+            
+            
+            delta = int(min((task.stop_absolute - datetime.datetime.now()).total_seconds(), task.stop_relative))
+            
+            if (delta > 0):
+                g_logger.log (self.node.hostname + " : Task will be interrupted in " + str(delta) + " seconds")
+                self.timer = threading.Timer(delta, self.interrupt_task)
+                self.timer.start()
+            
+                               
             g_notifications.task_started (self.node, task, "")
             task_result = None
             try:
@@ -217,9 +254,14 @@ class TestWorker (AbstractWorker):
         return TaskExecutionResult(Tasks.Taskresult.success, "exec_put successful", "")             
     def exec_get (self, task):
         print "TestWorker gets '" + task.name + "' " + task.src + "' '" + task.dest+ "'"
-        return TaskExecutionResult(Tasks.Taskresult.success, "exec_get successful", "")         
+        return TaskExecutionResult(Tasks.Taskresult.success, "exec_get successful", "")     
+    def interrupt_task (self):
+        print "TestWorker task is interrupted by timeout"  
 
 class LocalWorker (AbstractWorker):
+    def __init__(self, threadID, node, tasks):
+        AbstractWorker.__init__(self, threadID, node, tasks)
+        self.process = None
     def connect (self):
         g_logger.log ("LocalWorker connects to '" + self.node.hostname + "'")
         try:
@@ -241,7 +283,10 @@ class LocalWorker (AbstractWorker):
         output = ""
         found = False
         try:
-            output = subprocess.check_output(task.command + " " + task.arguments, shell=True)
+            self.process = subprocess.Popen("exec " + task.command, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, shell=True)
+            stdoutdata, stderrdata = self.process.communicate()
+            output = stdoutdata
+            #subprocess.check_output(task.command + " " + task.arguments, shell=True)
             output = output.rstrip()
         except subprocess.CalledProcessError as e:
             returncode = e.returncode
@@ -259,10 +304,17 @@ class LocalWorker (AbstractWorker):
     def exec_put (self, task):
         raise NotImplementedError (inspect.stack()[0][3]) 
     def exec_get (self, task):
-        raise NotImplementedError (inspect.stack()[0][3]) 
+        raise NotImplementedError (inspect.stack()[0][3])
+    def interrupt_task (self):
+        g_logger.log (self.node.hostname + " : Task interrupted by timeout")
+        if (None != self.process):
+            self.process.terminate()
 
 
 class RemoteSSHWorker (AbstractWorker):
+    def __init__(self, threadID, node, tasks):
+        AbstractWorker.__init__(self, threadID, node, tasks)
+        self.task_interrupted = False
     def connect (self):
         self.ssh = None
         if (interrupt):
@@ -369,6 +421,7 @@ class RemoteSSHWorker (AbstractWorker):
         return self.exec_run (t)
     def exec_run (self, task):        
         global interrupt
+        self.task_interrupted = False
         message = "undefined"
         output = ""
         if(interrupt):
@@ -402,6 +455,11 @@ class RemoteSSHWorker (AbstractWorker):
             if(interrupt):
                 result = Tasks.Taskresult.user_interrupt
                 break
+            if (self.task_interrupted):
+                channel.close()
+                exit_status = 0
+                break
+                
             if (timeout != -1):
                 delta = time.time() - start_time
                 if (delta > timeout):
@@ -427,7 +485,7 @@ class RemoteSSHWorker (AbstractWorker):
                         stderr_data += data
                 if not got_data:
                     break        
-        if (result == Tasks.Taskresult.success):
+        if (not self.task_interrupted and result == Tasks.Taskresult.success):
             exit_status = channel.recv_exit_status ()          
         if (result == Tasks.Taskresult.success):
             if (task.expected_return_code != -1):                    
@@ -520,7 +578,10 @@ class RemoteSSHWorker (AbstractWorker):
             pass     
         if (None == result):          
             result = TaskExecutionResult(Tasks.Taskresult.success, "Store source '"+task.src+"' in '" +task.dest+"'", "")      
-        return result     
+        return result
+    def interrupt_task (self):
+        g_logger.log (self.node.hostname + " : Task interrupted by timeout")
+        self.task_interrupted = True   
     
 class PlanetLabWorker (RemoteSSHWorker):
     def connect (self):
@@ -588,7 +649,7 @@ class NodeWorker ():
     def start (self):
         g_logger.log ("Starting execution for node " + self.node.hostname)
         self.thread.start()
-    
+
 class Worker:
     def __init__(self, logger, configuration, target, nodes, tasks, notifications):
         global g_logger;
