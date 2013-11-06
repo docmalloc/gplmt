@@ -294,7 +294,7 @@ class RemoteSSHWorker (AbstractWorker):
                                 password=self.node.password,
                                 timeout=10)
                 else:
-                    g_logger.log (self.node.hostname + " : Using node information ;" + self.node.username +"'")
+                    g_logger.log (self.node.hostname + " : Using node information '" + self.node.username +"'")
                     self.ssh.connect (self.node.hostname,
                                  port=self.node.port or 22,
                                  username=self.node.username,
