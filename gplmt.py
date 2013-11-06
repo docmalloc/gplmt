@@ -114,7 +114,9 @@ def main():
             elif o in ("-s", "--startid"):
                 startid = a                                        
             else:
-                assert False, "unhandled option"
+                print "Unknown argument '" +str(o)+ "'"
+                usage()
+                sys.exit()
     
         if (verbose == True):
             main.gplmt_logger = Util.Logger (True)
