@@ -85,11 +85,11 @@ minixsv
 On GNU/Linux use: sudo pip install minixsv
 Or check http://pypi.python.org/pypi/minixsv/0.7/
 
-Paramiko
+Paramiko (Bluehorn fork)
 --------
 
-On GNU/Linux use: sudo pip install paramiko
-Or check http://www.lag.net/paramiko/
+Due to a bug in the original paramiko please use the bluehorn fork:
+Check out: https://github.com/Bluehorn/paramiko
 
 Usage
 ===============
