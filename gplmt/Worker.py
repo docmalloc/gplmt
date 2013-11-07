@@ -163,7 +163,7 @@ class AbstractWorker(threading.Thread):
             
             delta = int(min((task.stop_absolute - datetime.datetime.now()).total_seconds(), task.stop_relative))
             
-            if (delta > 0):
+            if (delta > 0 and delta < 31556926):
                 g_logger.log (self.node.hostname + " : Task will be interrupted in " + str(delta) + " seconds")
                 self.timer = threading.Timer(delta, self.interrupt_task)
                 self.timer.start()
@@ -208,6 +208,10 @@ class AbstractWorker(threading.Thread):
                 tasklist_success = False
                 break                      
             task = self.tasks.get()
+
+        if (self.timer != None):
+            self.timer.cancel()
+            self.timer = None
 
         if (interrupt):            
             g_notifications.tasklist_completed (self.node, self.tasks, Tasks.Taskresult.user_interrupt, "")
