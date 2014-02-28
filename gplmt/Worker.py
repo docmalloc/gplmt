@@ -586,7 +586,71 @@ class RemoteSSHWorker (AbstractWorker):
     def interrupt_task (self):
         g_logger.log (self.node.hostname + " : Task interrupted by timeout")
         self.task_interrupted = True   
+
+class HenWorker (RemoteSSHWorker):
+    def connect(self):
+        self.transport = None
+        if (interrupt):
+            return TaskExecutionResult(Tasks.Taskresult.user_interrupt, "interrupted by user", "")
+        
+        try:
+            # Connect to gateway
+            g_logger.log('Connecting to hen gateway %s' % g_configuration.hen_gw)
+            sshgw = paramiko.SSHClient()
+            sshgw.load_system_host_keys()
+            sshgw.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            
+            sshgw.connect(g_configuration.hen_gw,
+                        22,
+                        username=g_configuration.hen_gw_username, 
+                        timeout=10,
+                        key_filename=g_configuration.hen_gw_keyfile,
+                        password=g_configuration.hen_gw_keyfile_password)
+            
+            # Create a new channel from gateway to node
+            g_logger.log('Connecting to node %s through hen gateway' % self.node.hostname)
+
+            port = 22 if self.node.port is None else self.node.port
+            transgw = sshgw.get_transport()
+            nodechannel = transgw.open_channel('direct-tcpip', (self.node.hostname, port), ('127.0.0.1', 0))
+            self.transport = paramiko.Transport(nodechannel)
+            self.transport.start_client()
+            
+            # Node authentication
+            if self.node.username is not None: # username/password supplied in node file
+                self.transport.auth_password(self.node.username, self.node.password)
+
+            elif g_configuration.hen_node_keyfile is not None: # Private key supplied in config
+                for pkey_class in (paramiko.RSAKey, paramiko.DSSKey):
+                    try:
+                        key = pkey_class.from_private_key_file(g_configuration.hen_node_keyfile, g_configuration.hen_node_password)
+                        break
+                    except paramiko.SSHException, e:
+                        pass
+                self.transport.auth_publickey(g_configuration.hen_node_username, key)
+            
+            else:
+                self.transport.auth_password(g_configuration.hen_node_username, g_configuration.hen_node_password)
+            
+            self.sshgw = sshgw # not needed later but to avoid gc disconnecting us
+            
+        except (IOError,
+                paramiko.SSHException,
+                paramiko.BadHostKeyException, 
+                paramiko.AuthenticationException,
+                socket.error) as e:  
+            g_logger.log (self.node.hostname + " : Error while trying to connect: " + str(e))
+            return TaskExecutionResult (Tasks.Taskresult.fail, str(e), "")
+
+        g_logger.log (self.node.hostname + " : Connected!")
+        return TaskExecutionResult (Tasks.Taskresult.success, "", "")
     
+    def disconnect(self):       
+        if (None == self.transport):
+            return TaskExecutionResult (Tasks.Taskresult.fail, "", "")
+        self.transport.close()
+        return TaskExecutionResult (Tasks.Taskresult.success, "", "")
+
 class PlanetLabWorker (RemoteSSHWorker):
     def connect (self):
         self.ssh = None
@@ -648,7 +712,9 @@ class NodeWorker ():
         elif (self.target == Targets.Target (Targets.Target.remote_ssh)):
             self.thread = RemoteSSHWorker (1, self.node, self.tasks);
         elif (self.target == Targets.Target (Targets.Target.planetlab)):
-            self.thread = PlanetLabWorker (1, self.node, self.tasks);   
+            self.thread = PlanetLabWorker (1, self.node, self.tasks);
+        elif (self.target == Targets.Target (Targets.Target.hen)):
+            self.thread = HenWorker (1, self.node, self.tasks);
         return        
     def start (self):
         g_logger.log ("Starting execution for node " + self.node.hostname)

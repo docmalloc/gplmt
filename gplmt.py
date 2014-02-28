@@ -235,7 +235,7 @@ Arguments mandatory for long options are also mandatory for short options.\n\
   -c, --config=FILENAME      use configuration file FILENAME\n\
   -n, --nodes=FILENAME       use node file FILENAME\n\
   -l, --tasks=FILENAME       use tasks file FILENAME\n\
-  -t, --target=TARGET        TARGET={local|remote_ssh|planetlab}\n\
+  -t, --target=TARGET        TARGET={local|remote_ssh|planetlab|hen}\n\
   -C, --command=             run single commandgplmt_taskfile of taskfile, print output using -v\n\
   -a, --all                  use all nodes assigned to PlanetLab slice instead of nodes file\n\
   -p, --password             password to access PlanetLab API\n\

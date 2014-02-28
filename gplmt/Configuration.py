@@ -46,6 +46,13 @@ class Configuration:
         self.gplmt_taskfile = None
         self.gplmt_nodesfile = None
         self.gplmt_userdir = ""
+        self.hen_gw = None
+        self.hen_gw_username = None
+        self.hen_gw_keyfile = None
+        self.hen_gw_keyfile_password = None
+        self.hen_node_username = None
+        self.hen_node_keyfile = None
+        self.hen_node_password = None
         self.pl_slicename = ""
         self.pl_api_url = ""
         self.pl_username = None
@@ -117,6 +124,38 @@ class Configuration:
                 pass
         except ConfigParser.NoSectionError:
             pass                
+        
+        try:
+            try: 
+                self.hen_gw = config.get("hen", "hen_gw")
+            except ConfigParser.NoOptionError as e:
+                pass
+            try:
+                self.hen_gw_username = config.get("hen", "hen_gw_username")
+            except ConfigParser.NoOptionError as e:
+                pass
+            try:
+                self.hen_gw_keyfile = config.get("hen", "hen_gw_keyfile")
+            except ConfigParser.NoOptionError as e:
+                pass
+            try:
+                self.hen_gw_keyfile_password = config.get("hen", "hen_gw_keyfile_password")
+            except ConfigParser.NoOptionError as e:
+                pass
+            try:
+                self.hen_node_username = config.get("hen", "hen_node_username")
+            except ConfigParser.NoOptionError as e:
+                pass
+            try:
+                self.hen_node_keyfile = config.get("hen", "hen_node_keyfile")
+            except ConfigParser.NoOptionError as e:
+                pass
+            try:
+                self.hen_node_password = config.get("hen", "hen_node_password")
+            except ConfigParser.NoOptionError as e:
+                pass
+        except ConfigParser.NoSectionError:
+            pass
 
         try:          
             try: 

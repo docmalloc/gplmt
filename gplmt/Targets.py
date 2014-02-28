@@ -30,6 +30,7 @@ class Target ():
     local = 2
     remote_ssh = 3
     planetlab = 4
+    hen = 5
     def __init__(self, Type = undefined):
         self.value = Type
     def __str__(self):
@@ -41,6 +42,8 @@ class Target ():
             return 'remote_ssh'
         if self.value == Target.planetlab:
             return 'planetlab'
+        if self.value == Target.hen:
+            return 'hen'
         else:
             return "undefined"
     def __ne__(self,y):
@@ -68,11 +71,13 @@ class Target ():
             return Target (Target.remote_ssh)
         elif (str.lower(source_str) == str (Target (Target.planetlab))):
             return Target (Target.planetlab)
+        elif (str.lower(source_str) == str (Target (Target.hen))):
+            return Target (Target.hen)
         else:
             return Target (Target.undefined) 
 
 if __name__ == "__main__":
-    for s in  ["local", "remote_ssh", "planetlab"]:
+    for s in  ["local", "remote_ssh", "planetlab", "hen"]:
         print s
     sys.exit(0)
    
