@@ -7,7 +7,7 @@
         <arguments></arguments> 
         <timeout>10</timeout>
         <expected_return_code>0</expected_return_code>
-        <expected_output>2013</expected_output>
+        <expected_output>2014</expected_output>
         <stop_on_fail>true</stop_on_fail>
 	</run> 
 
@@ -157,7 +157,6 @@
    
 	</sequence>
 	
-	<sequence enabled="false">
 	 <!-- Install depencies from source -->
      <sequence enabled="true">
      <!-- Install libtool -->
@@ -265,7 +264,6 @@
             <stop_on_fail>true</stop_on_fail>
       </run>
     </sequence>    
-    </sequence>
     
      <sequence enabled="false">
      <!-- Install libextractor  -->
