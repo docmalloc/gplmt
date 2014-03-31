@@ -3,7 +3,7 @@
 	
 	<run id="0" name="check peer">
 		<!-- Check if peer is working -->
-        <command>sudo date</command> 
+        <command>sudo -S date</command> 
         <arguments></arguments> 
         <timeout>10</timeout>
         <expected_return_code>0</expected_return_code>
@@ -15,7 +15,7 @@
 	<sequence enabled="false">
 	<!-- Install dependencies -->
 	<run id="1" name="Install dependencies with yum : gcc">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>gcc</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -23,7 +23,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>
     <run id="1" name="Install dependencies with yum : make">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>make</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -31,7 +31,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>
     <run id="1" name="Install dependencies with yum : autoconf">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>autoconf</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -39,7 +39,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>
     <run id="1" name="Install dependencies with yum : gettext-devel">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>gettext-devel</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -47,7 +47,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>		
 	<run id="1" name="Install dependencies with yum : texinfo">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>texinfo</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -55,7 +55,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>
     <run id="1" name="Install dependencies with yum : libunistring-devel">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>libunistring-devel</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -63,7 +63,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>
     <run id="1" name="Install dependencies with yum : gnutls-devel">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>gnutls-devel</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -71,7 +71,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>
 	<run id="1" name="Install dependencies with yum : libgcrypt-devel">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>libgcrypt-devel</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -79,7 +79,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>	
     <run id="1" name="Install dependencies with yum : zlib-devel">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>zlib-devel</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -87,7 +87,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>		
     <run id="1" name="Install dependencies with yum : sqlite-devel">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>sqlite-devel</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -95,7 +95,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>
     <run id="1" name="Install dependencies with yum : postgresql-devel">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>postgresql-devel</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -103,7 +103,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>  
     <run id="1" name="Install dependencies with yum : mysql-devel">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>mysql-devel</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -111,7 +111,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>      
     <run id="1" name="Install dependencies with yum : libgsf-devel">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>libgsf-devel</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -119,7 +119,7 @@
           <stop_on_fail>false</stop_on_fail>
     </run>
    	<run id="1" name="Install dependencies with yum : libvorbis-devel">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>libvorbis-devel</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -131,7 +131,7 @@
 	<sequence enabled="true">
 	 <!-- Setup subversion -->
     <run id="1" name="Install dependencies with yum : subversion">
-          <command>sudo yum -y -t --nogpgcheck install</command> 
+          <command>sudo -S yum -y -t --nogpgcheck install</command> 
           <arguments>subversion</arguments> 
           <timeout>0</timeout> 
           <expected_return_code>0</expected_return_code>
@@ -185,7 +185,7 @@
             <stop_on_fail>true</stop_on_fail>
       </run>
       <run id="1" name="Install libtool">
-            <command>cd libtool/libtool-2.4.2; sudo make install</command>
+            <command>cd libtool/libtool-2.4.2; sudo -S make install</command>
             <arguments> </arguments> 
             <timeout>0</timeout> 
             <expected_return_code>0</expected_return_code>
@@ -221,7 +221,7 @@
             <stop_on_fail>true</stop_on_fail>
       </run>
       <run id="1" name="Install libcurl">
-            <command>cd libcurl/curl-7.26.0; sudo make install</command>
+            <command>cd libcurl/curl-7.26.0; sudo -S make install</command>
             <arguments> </arguments> 
             <timeout>0</timeout> 
             <expected_return_code>0</expected_return_code>
@@ -256,7 +256,7 @@
             <stop_on_fail>true</stop_on_fail>
       </run>
       <run id="1" name="Install glpk">
-            <command>cd glpk/glpk-4.47; sudo make install</command>
+            <command>cd glpk/glpk-4.47; sudo -S make install</command>
             <arguments> </arguments> 
             <timeout>0</timeout> 
             <expected_return_code>0</expected_return_code>
@@ -292,7 +292,7 @@
             <stop_on_fail>true</stop_on_fail>
       </run>
       <run id="1" name="Install libextractor">
-            <command>cd libextractor/libextractor-0.6.3; sudo make install</command>
+            <command>cd libextractor/libextractor-0.6.3; sudo -S make install</command>
             <arguments> </arguments> 
             <timeout>0</timeout> 
             <expected_return_code>0</expected_return_code>
@@ -329,7 +329,7 @@
             <stop_on_fail>true</stop_on_fail>
       </run>
       <run id="1" name="Install Extractor">
-            <command>cd Extractor; sudo make install</command>
+            <command>cd Extractor; sudo -S make install</command>
             <arguments> </arguments> 
             <timeout>0</timeout> 
             <expected_return_code>0</expected_return_code>
@@ -364,7 +364,7 @@
             <stop_on_fail>true</stop_on_fail>
       </run>
       <run id="1" name="Install libmicrohttpd">
-            <command>cd libmicrohttpd; sudo make install</command>
+            <command>cd libmicrohttpd; sudo -S make install</command>
             <arguments> </arguments> 
             <timeout>0</timeout> 
             <expected_return_code>0</expected_return_code>
