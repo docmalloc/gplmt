@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<tasklist
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../tasklist_schema.xsd"
+    name="Configure NSE histograms">
+  <options/>
+    <sequence name="" enabled="true">
+    <run name="Download GNUnet" id="1" enabled="true">
+      <command>svn checkout</command>
+      <arguments>https://gnunet.org/svn/gnunet</arguments>
+      <timeout>0</timeout>
+      <expected_return_code>0</expected_return_code>
+      <expected_output></expected_output>
+      <stop_on_fail>true</stop_on_fail>
+    </run>
+    <run name="Bootstrap GNUnet" id="2" enabled="true">
+      <command>cd gnunet; libtoolize; ./bootstrap</command>
+      <arguments></arguments>
+      <timeout>0</timeout>
+      <expected_return_code>0</expected_return_code>
+      <expected_output></expected_output>
+      <stop_on_fail>true</stop_on_fail>
+    </run>
+    <run name="Configure GNUnet" id="3" enabled="true">
+      <command>cd gnunet; ./configure</command>
+      <arguments>
+        --with-extractor=/usr/local --with-gcrypt=/usr/local
+        --with-mysql=/usr/lib/mysql --enable-logging=verbose
+        --enable-nse-histograms=yes --disable-autostart
+      </arguments>
+      <timeout>0</timeout>
+      <expected_return_code>0</expected_return_code>
+      <expected_output></expected_output>
+      <stop_on_fail>true</stop_on_fail>
+    </run>
+    <run name="Install GNUnet" id="4" enabled="true">
+      <command>cd gnunet; sudo -S make install</command>
+      <arguments></arguments>
+      <timeout>0</timeout>
+      <expected_return_code>0</expected_return_code>
+      <expected_output></expected_output>
+      <stop_on_fail>true</stop_on_fail>
+    </run>
+  </sequence>
+</tasklist>
