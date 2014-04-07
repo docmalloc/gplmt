@@ -23,7 +23,7 @@
     </run>
     <run name="Configure GNUnet" id="3" enabled="true">
       <command>cd gnunet; ./configure</command>
-      <arguments> --with-extractor=/usr/local --with-libgcrypt-prefix=/usr/local --with-mysql=/usr/lib/mysql --enable-logging=verbose --enable-nse-histogram=yes --disable-autostart
+      <arguments> --with-extractor=/usr/local --with-libgcrypt-prefix=/usr/local --with-mysql=/usr/lib/mysql --enable-logging=verbose --enable-nse-histogram=yes --disable-autostart --with-libgnurl=/usr/local
       </arguments>
       <timeout>0</timeout>
       <expected_return_code>0</expected_return_code>
