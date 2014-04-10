@@ -560,17 +560,19 @@ class RemoteSSHWorker (AbstractWorker):
             g_logger.log (self.node.hostname + " : Task '"+ message)
             return TaskExecutionResult(Tasks.Taskresult.user_interrupt, "interrupted by user", "")
         try:
+            base = os.path.basename(task.src)
+            dest = os.path.join(task.dest, '%s.%s' % (self.node.hostname, base))
             if (g_configuration.ssh_transfer == Configuration.TransferMode.scp): 
                 try:
                     scp = SCPClient (self.transport)
-                    scp.get (task.src, task.dest)
+                    scp.get (task.src, dest)
                 except SCPException as e:
                     g_logger.log (self.node.hostname + " : Task '"+ task.name + "' :")
                     result = TaskExecutionResult(Tasks.Taskresult.fail, str(e), "")  
                     pass                
             if (g_configuration.ssh_transfer == Configuration.TransferMode.sftp):
                 sftp = paramiko.SFTPClient.from_transport (self.transport)
-                sftp.get (task.src, task.dest)
+                sftp.get (task.src, dest)
                 sftp.close()
         except paramiko.SSHException as e:
             g_logger.log (self.node.hostname + " : Task '"+ task.name + "' :" + str(e))

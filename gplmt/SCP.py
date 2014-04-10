@@ -315,7 +315,10 @@ class SCPClient(object):
         try:
             mode = int(parts[0], 8)
             size = int(parts[1])
-            path = os.path.join(self._recv_dir, parts[2])
+            if os.path.isdir(self._recv_dir):
+                path = os.path.join(self._recv_dir, parts[2])
+            else:
+                path = self._recv_dir
         except:
             chan.send('\x01')
             chan.close()
