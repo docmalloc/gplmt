@@ -111,5 +111,3 @@ class Configuration:
         val = converter(raw_val)
         setattr(self, name, val)
 
-
-

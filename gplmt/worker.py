@@ -33,6 +33,9 @@ import signal
 import inspect
 import subprocess
 import datetime
+import paramiko
+from paramiko.ssh_exception import SSHException
+from collections import namedtuple
 
 from .configuration import *
 from .util import *
@@ -40,11 +43,10 @@ from .tasks import *
 from .targets import *
 from .SCP import *
 
-class TaskExecutionResult:
-    def __init__ (self, result, message, output):
-        self.result = result
-        self.message = message
-        self.output = output
+class UnsupportedOperationError(Exception):
+    pass
+
+TaskExecutionResult = namedtuple('TaskExecutionResult', 'result message output')
 
 interrupt = False
 def signal_handler(signal, frame):
@@ -72,11 +74,6 @@ def signal_handler(signal, frame):
 
 signal.signal(signal.SIGINT, signal_handler)
 
-try:
-    import paramiko
-    from paramiko.ssh_exception import SSHException
-except ImportError:
-    pass
 
 # Global variables
 g_logger = None
@@ -235,189 +232,197 @@ class AbstractWorker(threading.Thread):
              
             
 
-class TestWorker (AbstractWorker):
-    def connect (self):
-        print("TestWorker connects to '" + self.node.hostname + "'")
+class TestWorker(AbstractWorker):
+    """
+    Worker that succeeds at every task without doing anything.
+    Prints the work that should've been done to stdout.
+    """
+    def connect(self):
+        print("TestWorker connects to '%s'" % (self.node.hostname,))
         return TaskExecutionResult(Tasks.Taskresult.success, "", "")    
-    def disconnect (self):       
-        print("TestWorker disconnects from '" + self.node.hostname + "'")
+    def disconnect(self):
+        print("TestWorker disconnects from '%s'" % (self.node.hostname,))
         return TaskExecutionResult(Tasks.Taskresult.success, "", "")     
-    def exec_run_per_host (self, task):
-        print("TestWorker executes per host ")
+    def exec_run_per_host(self, task):
+        print("TestWorker executes per host")
         return TaskExecutionResult(Tasks.Taskresult.success, "exec_run_per_host successful", "")
-    def exec_run (self, task):
-        print("TestWorker executes '" + task.name + "' and runs '" +task.command+ "'")
+    def exec_run(self, task):
+        print("TestWorker executes '%s' and runs '%s'" % (task.name, task.command))
         return TaskExecutionResult(Tasks.Taskresult.success, "exec_run successful", "")        
-    def exec_put (self, task):
-        print("TestWorker puts '" + task.name + "' " + task.src + "' '" + task.dest+ "'")
+    def exec_put(self, task):
+        print("TestWorker puts '%s' from '%s' to '%s'" % (task.name, task.src, task.dest)
         return TaskExecutionResult(Tasks.Taskresult.success, "exec_put successful", "")             
-    def exec_get (self, task):
-        print("TestWorker gets '" + task.name + "' " + task.src + "' '" + task.dest+ "'")
+    def exec_get(self, task):
+        print("TestWorker puts '%s' from '%s' to '%s'" % (task.name, task.src, task.dest)
         return TaskExecutionResult(Tasks.Taskresult.success, "exec_get successful", "")     
-    def interrupt_task (self):
+    def interrupt_task(self):
         print("TestWorker task is interrupted by timeout")
 
-class LocalWorker (AbstractWorker):
+
+class LocalWorker(AbstractWorker):
     def __init__(self, threadID, node, tasks):
-        AbstractWorker.__init__(self, threadID, node, tasks)
+        super().__init__(self, threadID, node, tasks)
         self.process = None
-    def connect (self):
-        g_logger.log ("LocalWorker connects to '" + self.node.hostname + "'")
+
+    def connect(self):
+        logging.info("LocalWorker connects to '" + self.node.hostname + "'")
         try:
             if not os.path.exists(self.node.hostname):            
                 os.makedirs(self.node.hostname)
-                g_logger.log ("Created " + self.node.hostname)
+                logging.info("Created " + self.node.hostname)
         except os.error as e:
-            g_logger.log ("Could not created " + self.node.hostname)
-            return TaskExecutionResult(Tasks.Taskresult.fail, "Could not created '" + self.node.hostname, "' :"+ str (e))
+            logging.info("Could not created " + self.node.hostname)
+            msg = "Cound not create '%s'." % (self.node.hostname,)
+            return TaskExecutionResult(Tasks.Taskresult.fail, msg, str(e))
         return TaskExecutionResult(Tasks.Taskresult.success, "", "")    
-    def disconnect (self):       
-        return TaskExecutionResult(Tasks.Taskresult.success, "Disconnected", "")         
-    def exec_run_per_host (self, task):
-        raise NotImplementedError (inspect.stack()[0][3])        
-    def exec_run (self, task):
-        g_logger.log ("LocalWorker executes on '" + self.node.hostname + "' : " + task.command + " " + task.arguments)
-        result = Tasks.Taskresult.success
-        returncode = 0
-        output = ""
-        found = False
+
+    def disconnect(self):       
+        return TaskExecutionResult(Tasks.Taskresult.success, "Disconnected", "")
+
+    def exec_run_per_host(self, task):
+        raise UnsupportedOperationError("Local workers can't execute per-node commands")
+
+    def exec_run(self, task):
+        logging.info("LocalWorker executes on '" + self.node.hostname + "' : " + task.command + " " + task.arguments)
         try:
-            self.process = subprocess.Popen("exec " + task.command, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, shell=True)
+            self.process = subprocess.Popen( "exec " + task.command, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, shell=True)
             stdoutdata, stderrdata = self.process.communicate()
             output = stdoutdata
-            #subprocess.check_output(task.command + " " + task.arguments, shell=True)
             output = output.rstrip()
-        except subprocess.CalledProcessError as e:
-            returncode = e.returncode
         except Exception as e:
             print(e)
-        if (task.expected_return_code != -1) and (task.expected_return_code != returncode):
-            return TaskExecutionResult(Tasks.Taskresult.return_value_did_not_match, "Expected return code " + str(task.expected_return_code) +" but got " +str(returncode) +"", output)  
-        if (task.expected_output != None):
+            return TaskExecutionResult(Taskresult.fail, "Could not execute command", str(e))
+
+        if (task.expected_return_code != -1 and task.expected_return_code != returncode:
+            return TaskExecutionResult(
+                Tasks.Taskresult.return_value_did_not_match,
+                "Expected return code %d but got %d" % (task.expected_return_code, returncode), 
+                output)
+
+        if task.expected_output is not None:
+            found = False
             for l in output.splitlines():
-                if (task.expected_output in l):
+                if task.expected_output in l:
                     found = True
-            if (False == found):
-                return TaskExecutionResult(Tasks.Taskresult.return_value_did_not_match, "Expected output should contain '" + str(task.expected_output) +"' but got '" + output +"'", output)
-        return TaskExecutionResult(result, "successful", output)                
+            if not found:
+                return TaskExecutionResult(
+                    Tasks.Taskresult.return_value_did_not_match,
+                    "Expected output should contain '" + str(task.expected_output) +"'",
+                    output)
+        return TaskExecutionResult(Taskresult.success, "successful", output)                
+
     def exec_put (self, task):
         raise NotImplementedError (inspect.stack()[0][3]) 
+
     def exec_get (self, task):
         raise NotImplementedError (inspect.stack()[0][3])
+
     def interrupt_task (self):
-        g_logger.log (self.node.hostname + " : Task interrupted by timeout")
-        if (None != self.process):
+        logging.info(self.node.hostname + " : Task interrupted by timeout")
+        if self.process is not None:
             self.process.terminate()
 
 
 class RemoteSSHWorker (AbstractWorker):
     def __init__(self, threadID, node, tasks):
-        AbstractWorker.__init__(self, threadID, node, tasks)
+        super().__init__(self, threadID, node, tasks)
         self.task_interrupted = False
+
     def connect (self):
         self.ssh = None
-        if (interrupt):
+        if interrupt:
             return TaskExecutionResult(Tasks.Taskresult.user_interrupt, "interrupted by user", "")            
         try: 
             self.ssh = paramiko.SSHClient()
+
+            cfg = self.configuration
             
-            if (g_configuration.ssh_use_known_hosts):
-                g_logger.log (self.node.hostname + " : Loading known hosts")
-                self.ssh.load_system_host_keys ()
+            if cfg.ssh_use_known_hosts:
+                logging.info(self.node.hostname + " : Loading known hosts")
+                self.ssh.load_system_host_keys()
+
             # Automatically add new hostkeys
-            if (g_configuration.ssh_add_unkown_hostkeys == True):
+            if cfg.ssh_add_unkown_hostkeys:
                 self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            # check for private key existance
+
+            # keyword arguments that will be passed to ssh.connect
+            connect_args = {}
+
+            # check for private key existence
             keyfile = None
-            if (g_configuration.ssh_keyfile != None): 
-                if (os.path.exists (g_configuration.ssh_keyfile)):
-                    g_logger.log (self.node.hostname + " : Found " + g_configuration.ssh_keyfile)
-                    keyfile = g_configuration.ssh_keyfile
-                else:
-                    g_logger.log (self.node.hostname + " : Not found " + g_configuration.ssh_keyfile)
-            g_logger.log (self.node.hostname + " : Trying to connect to '" +Util.print_ssh_connection (self.node) + "'")
-            if self.node.username is not None: #credentials are supplied in node file
-                if (self.node.password is not None):
-                    g_logger.log (self.node.hostname + " : Using node information username '" + self.node.username + " and password '" +'***' +"'")                      
-                    self.ssh.connect (self.node.hostname,
-                                port=self.node.port or 22,
-                                username=self.node.username,
-                                password=self.node.password,
-                                timeout=10)
-                else:
-                    g_logger.log (self.node.hostname + " : Using node information '" + self.node.username +"'")
-                    self.ssh.connect (self.node.hostname,
-                                 port=self.node.port or 22,
-                                 username=self.node.username,
-                                 timeout=10)                                        
-            elif ("" != g_configuration.ssh_username):
-                g_logger.log (self.node.hostname + " : Using node information username '" + g_configuration.ssh_username  + "' and password '" + '***' +"'")
-                self.ssh.connect (self.node.hostname,
+            if g_configuration.ssh_keyfile is not None and os.path.exists(g_configuration.ssh_keyfile):
+                logging.info("Node %s: Using ssh key file %s", self.node, ssh_keyfile)
+                connect_args['keyfile'] = g_configuration.ssh_keyfile
+
+            if self.node.username:
+                logging.info("Node %s: Using username from nodes file.", self.node)
+                connect_args['username'] = self.node.username
+                if self.node.password is not None:
+                    logging.info("Node %s: Using password from nodes file.", self.node)
+                    connect_args['password'] = self.node.password
+            elif cfg.ssh_username:
+                logging.info("Node %s: Using credentials from GPLMT config", self.node)
+                connect_args['username'] = cfg.ssh_username
+                connect_args['password'] = cfg.ssh_password
+            elif cfg.ssh_password:
+                logging.info("Node %s: Using password-only from GPLMT config", self.node)
+                connect_args['password'] = cfg.ssh_password
+
+            logging.info("Node %s: Trying to connect to '%s'", self.node.hostname, self.node)
+            self.ssh.connect (self.node.hostname,
                          port=self.node.port or 22,
-                         username=g_configuration.ssh_username, 
-                         password=g_configuration.ssh_password,
                          timeout=10,
-                         key_filename=keyfile)
-            elif ("" != g_configuration.ssh_password):
-                g_logger.log (self.node.hostname + " : Using node information password '" + '***' + "'")
-                self.ssh.connect (self.node.hostname,
-                             port=self.node.port or 22,
-                             password=g_configuration.self.ssh_password,
-                             timeout=10,
-                             key_filename=keyfile)
-            else:
-                g_logger.log (self.node.hostname + " : Using no information")
-                self.ssh.connect (self.node.hostname,
-                             port=self.node.port or 22,
-                             timeout=10,
-                             key_filename=keyfile)
+                         *connect_args)
+
             self.transport = self.ssh.get_transport()                         
         except (IOError,
                 paramiko.SSHException,
                 paramiko.BadHostKeyException, 
                 paramiko.AuthenticationException,
                 socket.error) as e:  
-            g_logger.log (self.node.hostname + " : Error while trying to connect: " + str(e))
+            logging.info(self.node.hostname + " : Error while trying to connect: " + str(e))
             return TaskExecutionResult (Tasks.Taskresult.fail, str(e), "")
-        g_logger.log (self.node.hostname + " : Connected!")
-        return TaskExecutionResult (Tasks.Taskresult.success, "", "")
-    def disconnect (self):       
-        if ((None == self.ssh) or (None == self.transport)):
+        logging.info(self.node.hostname + " : Connected!")
+        return TaskExecutionResult(Taskresult.success, "", "")
+
+    def disconnect(self):       
+        if self.ssh is None or self.transport is None:
             return TaskExecutionResult (Tasks.Taskresult.fail, "", "")
         self.ssh.close()
-        return TaskExecutionResult (Tasks.Taskresult.success, "", "")
-    def exec_run_per_host (self, task):
+        return TaskExecutionResult(Taskresult.success, "", "")
+
+    def exec_run_per_host(self, task):
         found = False
         default = None
         cmd = None          
         try:
-            f = open(task.command_file, 'r')
-            for line in f:
-                if (line[0] == '#'):
-                    continue;
-                sline = line.split (';',2)
-                if (sline[0] == self.node.hostname):
-                    cmd = sline[1].strip()
-                    found = True
-                if (sline[0] == ''):
-                    default = sline[1].strip()
-            f.close()
+            with open(task.command_file, 'r') as f:
+                for line in f:
+                    if line.strip().startswith('#'):
+                        continue
+                    sline = line.split(';', 2)
+                    host = sline[0].strip()
+                    if host == self.node.hostname:
+                        cmd = sline[1].strip()
+                        found = True
+                    if sline[0] == '':
+                        default = host
         except IOError as e:            
             return TaskExecutionResult (Tasks.Taskresult.fail, "Cannot open command file '" +task.command_file+ "' : " + str(e), "")
-            pass
         t = task.copy()
-        if (found == True):
-            g_logger.log (self.node.hostname + " : Found specific command '"+ cmd + "'")
+        if found:
+            logging.info(self.node.hostname + " : Found specific command '"+ cmd + "'")
             t.command = cmd
             t.arguments = ""
-        elif ((found == False) and (default != None)):
-            g_logger.log (self.node.hostname + " : Using default command '"+ default + "'")
+        elif default is not None:
+            logging.info("Node %s: Using default command '%s'", self.node.hostname, default)
             t.command = default
             t.arguments = ""
         else:
-            g_logger.log (self.node.hostname + " : Task '"+ task.name + "' failed: no command to execute")
-            return TaskExecutionResult (Tasks.Taskresult.fail, "no command to execute", "")  
-        return self.exec_run (t)
+            logging.info("Node %s: Task '%s' failed: no command to execute", self.node.hostname, task.name)
+            return TaskExecutionResult(Tasks.Taskresult.fail, "no command to execute", "")  
+        return self.exec_run(t)
+
     def exec_run (self, task):        
         global interrupt
         self.task_interrupted = False
@@ -520,37 +525,38 @@ class RemoteSSHWorker (AbstractWorker):
             message = "'"+ task.name +  "' failed"
             g_logger.log (self.node.hostname + " : Task "+ message)
         return TaskExecutionResult(result, message, output)  
+
     def exec_put (self, task):
-        if (False == os.path.exists (task.src)):
-            return TaskExecutionResult(Tasks.Taskresult.src_file_not_found, task.src, "")              
+        if not os.path.exists(task.src):
+            return TaskExecutionResult(Taskresult.src_file_not_found, task.src, "")              
         result = None
         try:
-            if (g_configuration.ssh_transfer == Configuration.TransferMode.scp):
-                try:
-                    scp = SCPClient (self.transport)
-                    scp.put (task.src, task.dest)
-                except SCPException as e:
-                    g_logger.log (self.node.hostname + " : Task '"+ task.name + "' :" + str(e))
-                    result = TaskExecutionResult(Tasks.Taskresult.fail, str(e), "")
-                    pass
-            if (g_configuration.ssh_transfer == Configuration.TransferMode.sftp):                
-                sftp = paramiko.SFTPClient.from_transport (self.transport)
+            if g_configuration.ssh_transfer == Configuration.TransferMode.scp:
+                scp = SCPClient(self.transport)
+                scp.put(task.src, task.dest)
+            if g_configuration.ssh_transfer == Configuration.TransferMode.sftp:
+                # XXX(FlorianDold): can we use a context manager here?
+                # How do we ensure that the sftp object is always closed?
+                sftp = paramiko.SFTPClient.from_transport(self.transport)
                 sftp.put(task.src, task.dest)
                 sftp.close()
+        except SCPException as e:
+            logging.info(self.node.hostname + " : Task '"+ task.name + "' :" + str(e))
+            result = TaskExecutionResult(Taskresult.fail, str(e), "")
         except paramiko.SSHException as e:
-            g_logger.log (self.node.hostname + " : Task '"+ task.name + "' :" + str(e))
-            result = TaskExecutionResult(Tasks.Taskresult.fail, str(e), "")
-            pass
+            logging.info(self.node.hostname + " : Task '"+ task.name + "' :" + str(e))
+            result = TaskExecutionResult(Taskresult.fail, str(e), "")
         except (OSError, IOError) as e:
-            g_logger.log (self.node.hostname + " : Task '"+ task.name + "' : " + str(e))
-            result = TaskExecutionResult(Tasks.Taskresult.src_file_not_found, str(e), "") 
-            pass 
-        if (None == result):          
+            logging.info(self.node.hostname + " : Task '"+ task.name + "' : " + str(e))
+            result = TaskExecutionResult(Taskresult.src_file_not_found, str(e), "")
+
+        if result is None:
             result = TaskExecutionResult(Tasks.Taskresult.success, "", "")        
         return result
+
     def exec_get (self, task):
         result = None
-        if(interrupt):
+        if interrupt:
             message = "'"+ task.name +  "' interrupted by user"
             g_logger.log (self.node.hostname + " : Task '"+ message)
             return TaskExecutionResult(Tasks.Taskresult.user_interrupt, "interrupted by user", "")
@@ -558,80 +564,84 @@ class RemoteSSHWorker (AbstractWorker):
             base = os.path.basename(task.src)
             dest = os.path.join(task.dest, '%s.%s' % (self.node.hostname, base))
             if (g_configuration.ssh_transfer == Configuration.TransferMode.scp): 
-                try:
-                    scp = SCPClient (self.transport)
-                    scp.get (task.src, dest)
-                except SCPException as e:
-                    g_logger.log (self.node.hostname + " : Task '"+ task.name + "' :")
-                    result = TaskExecutionResult(Tasks.Taskresult.fail, str(e), "")  
-                    pass                
-            if (g_configuration.ssh_transfer == Configuration.TransferMode.sftp):
+                scp = SCPClient (self.transport)
+                scp.get (task.src, dest)
+            if g_configuration.ssh_transfer == Configuration.TransferMode.sftp:
                 sftp = paramiko.SFTPClient.from_transport (self.transport)
-                sftp.get (task.src, dest)
+                sftp.get(task.src, dest)
                 sftp.close()
+        except SCPException as e:
+            logging.info(self.node.hostname + " : Task '"+ task.name + "' :")
+            result = TaskExecutionResult(Tasks.Taskresult.fail, str(e), "")  
         except paramiko.SSHException as e:
-            g_logger.log (self.node.hostname + " : Task '"+ task.name + "' :" + str(e))
+            logging.info(self.node.hostname + " : Task '"+ task.name + "' :" + str(e))
             result = TaskExecutionResult(Tasks.Taskresult.fail, str(e), "")
-            pass
         except (OSError, IOError) as e:
-            g_logger.log (self.node.hostname + " : Task '"+ task.name + "' : " + str(e))
+            logging.info(self.node.hostname + " : Task '"+ task.name + "' : " + str(e))
             result = TaskExecutionResult(Tasks.Taskresult.src_file_not_found, str(e), "")  
-            pass     
-        if (None == result):          
+        if result is None:          
             result = TaskExecutionResult(Tasks.Taskresult.success, "Store source '"+task.src+"' in '" +task.dest+"'", "")      
         return result
+
     def interrupt_task (self):
-        g_logger.log (self.node.hostname + " : Task interrupted by timeout")
+        logging.info(self.node.hostname + " : Task interrupted by timeout")
         self.task_interrupted = True   
 
 
 class PlanetLabWorker (RemoteSSHWorker):
-    def connect (self):
+    def connect(self):
         self.ssh = None
-        if (interrupt):
+
+        if interrupt:
             return TaskExecutionResult(Tasks.Taskresult.user_interrupt, "interrupted by user", "")            
+
         try: 
             self.ssh = paramiko.SSHClient()
+
+            config = self.configuration
             
-            if (g_configuration.ssh_use_known_hosts):
-                g_logger.log (self.node.hostname + " : Loading known hosts")
-                self.ssh.load_system_host_keys ()
+            if config.ssh_use_known_hosts:
+                logging.info("Node %s: Loading known hosts", self.node.hostname)
+                self.ssh.load_system_host_keys()
+
             # Automatically add new hostkeys
-            if (g_configuration.ssh_add_unkown_hostkeys == True):
+            if config.ssh_add_unkown_hostkeys:
                 self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            # check for private key existance
+
+            # Check for private key existence.
+            # If key is not found, password will be used.
             keyfile = None
-            if (g_configuration.pl_keyfile != None): 
+            if g_configuration.pl_keyfile is not None: 
                 if (os.path.exists (g_configuration.pl_keyfile)):
                     g_logger.log (self.node.hostname + " : Found " + g_configuration.pl_keyfile)
                     keyfile = g_configuration.pl_keyfile
                 else:
                     g_logger.log (self.node.hostname + " : Not found " + g_configuration.pl_keyfile)
-            g_logger.log (self.node.hostname + " : Trying to connect to '" +Util.print_ssh_connection (self.node) + "'")
-            g_logger.log (self.node.hostname + " : Using node information username '" + g_configuration.pl_slicename  + "'")
+
+            logging.info("Node %s: Trying to connect to %s", self.node.hostname, self.node)
+            logging.info("Node %s: Using username %s", self.config.hostname, config.pl_slicename)
+
             self.ssh.connect (self.node.hostname,
                      port=self.node.port or 22,
-                     username=g_configuration.pl_slicename, 
+                     username=config.pl_slicename, 
                      timeout=10,
                      key_filename=keyfile,
-                     password=g_configuration.pl_keyfile_password)
+                     password=config.pl_keyfile_password)
             self.transport = self.ssh.get_transport()                         
         except (IOError,
                 paramiko.SSHException,
                 paramiko.BadHostKeyException, 
                 paramiko.AuthenticationException,
                 socket.error) as e:  
-            g_logger.log (self.node.hostname + " : Error while trying to connect: " + str(e))
-            return TaskExecutionResult (Tasks.Taskresult.fail, str(e), "")
-        g_logger.log (self.node.hostname + " : Connected!")
-        return TaskExecutionResult (Tasks.Taskresult.success, "", "")
+            logging.info(self.node.hostname + " : Error while trying to connect: " + str(e))
+            return TaskExecutionResult(Taskresult.fail, str(e), "")
+
+        logging.info(self.node.hostname + " : Connected!")
+        return TaskExecutionResult(Taskresult.success, "", "")
   
 
-class NodeWorker ():
+class NodeWorker:
     def __init__(self, target, node, tasks):
-        assert (None != target)
-        assert (None != node)
-        assert (None != tasks) 
         self.target = target
         self.node = node
         self.tasks = tasks
@@ -648,53 +658,38 @@ class NodeWorker ():
         elif (self.target == Targets.Target (Targets.Target.planetlab)):
             self.thread = PlanetLabWorker (1, self.node, self.tasks);
         return        
+
     def start (self):
         g_logger.log ("Starting execution for node " + self.node.hostname)
         self.thread.start()
 
+
 class Worker:
-    def __init__(self, logger, configuration, target, nodes, tasks, notifications):
-        global g_logger;
-        global g_configuration;
-        global g_notifications;
-        assert (None != logger)
-        assert (None != configuration)
-        assert (None != target)
-        assert (None != nodes)
-        assert (None != tasks)
-        assert (None != notifications)
-        assert (hasattr(notifications, 'node_connected'))
-        assert (hasattr(notifications, 'node_disconnected'))        
-        assert (hasattr(notifications, 'tasklist_started'))
-        assert (hasattr(notifications, 'tasklist_completed'))
-        assert (hasattr(notifications, 'task_started'))
-        assert (hasattr(notifications, 'task_completed'))
+    def __init__(self, configuration, target, nodes, tasks, notifications):
         self.target = target
         self.node_results = nodes
-        self.workers_waiting = list ()
-        self.workers_running = list ()
-        self.workers_finished = list ()
+        self.workers_waiting = []
+        self.workers_running = []
+        self.workers_finished = []
         self.tasks = tasks
         self.parallelism = configuration.gplmt_parallelism
         self.current_workers = 0
         self.total_workers = 0
-        g_configuration = configuration
-        g_notifications = notifications
-        g_logger = logger;        
-    def start (self):
-        if (0 != self.parallelism):
-            g_logger.log ("Starting execution on target '" + str (self.target) + "'")
+
+    def start(self):
+        if self.parallelism != 0:
+            logging.info("Starting execution on target '%s'", self.target)
         else:
-            g_logger.log ("Starting execution on target '" + str (self.target) + "' with a parallelism of " + str (self.parallelism))   
+            logging.info("Starting execution on target '%s' with parallelism of %d", self.target, self.parallelism)
             
         self.total_workers = 0
         for node in self.node_results.node_results:
-            nw = NodeWorker (self.target, node, self.tasks.copy())
+            nw = NodeWorker(self.target, node, self.tasks.copy())
             self.workers_waiting.append(nw)
             self.total_workers += 1
             
         self.current_workers = 0
-        while (self.total_workers > len(self.workers_finished)):            
+        while self.total_workers > len(self.workers_finished):
             while ((0 != self.parallelism) and (len(self.workers_waiting) > 0) and (self.current_workers <= self.parallelism)):
                 nw = self.workers_waiting.pop(0)
                 nw.start()
