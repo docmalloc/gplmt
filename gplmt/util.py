@@ -17,10 +17,13 @@
 #    along with GNUnet; see the file COPYING.  If not, write to the
 #    Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 #    Boston, MA 02110-1301, USA.
-#
-# GNUnet Planetlab deployment and automation toolset 
-#
-# Utilities
+
+"""
+GNUnet Planetlab deployment and automation toolset 
+
+Utilities
+"""
+
 import os
 import sys
 
@@ -59,7 +62,4 @@ class Logger:
         global main
         if (True == self.verbose):
             print (message)
-            
-if __name__ == "__main__":
-    print "Nothing to do here!"
-    sys.exit(1)
+

@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 #    This file is part of GNUnet.
 #    (C) 2010 Christian Grothoff (and other contributing authors)
@@ -17,17 +16,16 @@
 #    along with GNUnet; see the file COPYING.  If not, write to the
 #    Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 #    Boston, MA 02110-1301, USA.
-#
-# GNUnet Planetlab deployment and automation toolset 
-#
-# Notifications     
 
-try:
-    import gplmt.Tasks as Tasklist
-    import time
-    import sys
-except ImportError as e: 
-    print "That's a bug! please check README: " + str(e)
+"""
+GNUnet Planetlab deployment and automation toolset 
+
+Notifications     
+"""
+
+import gplmt.Tasks as Tasklist
+import time
+import sys
 
 
 class Notification:
@@ -113,9 +111,9 @@ class FileLoggerNotification (Notification):
     def tasklist_completed (self, node, tasks, success, message):
         self.nodes_results.add (NodeResult(node))
         if (success == True):
-            print node + " : Tasklist '" +  tasks.name + "' completed successfully"
+            print(node + " : Tasklist '" +  tasks.name + "' completed successfully")
         else:
-            print node + " : Tasklist '" +  tasks.name + "' completed with failure"
+            print(node + " : Tasklist '" +  tasks.name + "' completed with failure")
     def task_started (self, node, task, message):
         return
     def task_completed (self, node, task, result, message, output):
@@ -149,7 +147,7 @@ class TaskListResultNotification (Notification):
             sys.stdout.write(' ' * diff + ' | ')
             fail_in = ""
             if (False == nres.connectSuccess):
-                print 'failed in: connecting: ' + nres.error_msg
+                print('failed in: connecting: ' + nres.error_msg)
                 continue
             for tl in nres.tasklists.tasklists:
                 sys.stdout.write(tl.name)
@@ -159,10 +157,10 @@ class TaskListResultNotification (Notification):
                 for t in nres.tasks:                    
                     if (t.fail == True):
                         fail_in = fail_in + " " +  t.task.name                 
-            print 'success' if (tl.success == Tasklist.Taskresult.success) else 'failed in: ' +fail_in 
+            print('success' if (tl.success == Tasklist.Taskresult.success) else 'failed in: ' +fail_in)
             for t in nres.tasks:
                 if (t.fail == True):
-                    print "\tFailed Task: '" + t.task.name + "' with '" +t.msg+ "' and '" + t.output.rstrip() + "'"
+                    print("\tFailed Task: '" + t.task.name + "' with '" +t.msg+ "' and '" + t.output.rstrip() + "'")
                 #else:
                     #print "\tSuccessful Task: '" + t.task.name + "' with '" +t.msg+ "' and '" +t.output.rstrip()+ "'"                                 
         #    tsk_str = ""
@@ -218,7 +216,7 @@ class TaskListResultNotification (Notification):
     def task_started (self, node, task, message):
         nodeObj = self.nodes_results.get(node)
         if (None == nodeObj):
-            print "NodeResult not found!"
+            print("NodeResult not found!")
             return 
         nodeObj.tasks.append (Task (task))
         return
@@ -253,34 +251,31 @@ class SimpleNotification (Notification):
         return
     def node_connected (self, node, success, message):
         if (success == True):
-            print node.hostname + " : connected successfully"
+            print(node.hostname + " : connected successfully")
         else:
-            print node.hostname + " : connection failed: " + message
+            print(node.hostname + " : connection failed: " + message)
     def node_disconnected (self, node, success, message):
         if (success == True):
-            print node.hostname + " : disconnected"
+            print(node.hostname + " : disconnected")
         else:
-            print node.hostname + " : disconnected with failure"    
+            print(node.hostname + " : disconnected with failure"    )
     def tasklist_started (self, node, tasks, message):
-        print node.hostname + " : Tasklist '" +  tasks.name + "' started"
+        print(node.hostname + " : Tasklist '" +  tasks.name + "' started")
         #self.nodes_results.add (NodeResult(node))
     def tasklist_completed (self, node, tasks, success, message):
         if (success == Tasklist.Taskresult.success):
-            print node.hostname + " : Tasklist '" +  tasks.name + "' completed successfully"
+            print(node.hostname + " : Tasklist '" +  tasks.name + "' completed successfully")
         elif (success == Tasklist.Taskresult.user_interrupt):
-            print node.hostname + " : Tasklist '" +  tasks.name + "' was interrupted"
+            print(node.hostname + " : Tasklist '" +  tasks.name + "' was interrupted")
         else:
-            print node.hostname + " : Tasklist '" +  tasks.name + "' completed with failure"
+            print(node.hostname + " : Tasklist '" +  tasks.name + "' completed with failure")
     def task_started (self, node, task, message):
-        print node.hostname + " : Task '" +  task.name + "' started"
+        print(node.hostname + " : Task '" +  task.name + "' started")
     def task_completed (self, node, task, result, message, output):
         if (result == Tasklist.Taskresult.success):
-            print node.hostname + " : Task '" +  task.name + "' completed successfully"
+            print(node.hostname + " : Task '" +  task.name + "' completed successfully")
         elif (result == Tasklist.Taskresult.src_file_not_found):
-            print node.hostname + " : Task '" +  task.name + "' failed : source file not found: " + message
+            print(node.hostname + " : Task '" +  task.name + "' failed : source file not found: " + message)
         else:
-            print node.hostname + " : Task '" +  task.name + "' completed with failure: " + message
+            print(node.hostname + " : Task '" +  task.name + "' completed with failure: " + message)
 
-if __name__ == "__main__":
-    print "Nothing to do here!"
-    sys.exit(1)

@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 #    This file is part of GNUnet.
 #    (C) 2010 Christian Grothoff (and other contributing authors)
@@ -17,10 +16,12 @@
 #    along with GNUnet; see the file COPYING.  If not, write to the
 #    Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 #    Boston, MA 02110-1301, USA.
-#
-# GNUnet Planetlab deployment and automation toolset 
-#
-# Worker
+
+"""
+GNUnet Planetlab deployment and automation toolset 
+
+Worker
+"""
 
 import threading
 import socket
@@ -33,17 +34,11 @@ import inspect
 import subprocess
 import datetime
 
-try:
-    import gplmt.Configuration as Configuration
-    import gplmt.Util as Util
-    import gplmt.Tasks as Tasks
-    import gplmt.Targets as Targets
-    from gplmt.SCP import SCPClient
-    from gplmt.SCP import SCPException
-except ImportError as e: 
-    print "That's a bug! please check README: " + __file__ + " : " + str(e)    
-    sys.exit(1)
-    
+from .configuration import *
+from .util import *
+from .tasks import *
+from .targets import *
+from .SCP import *
 
 class TaskExecutionResult:
     def __init__ (self, result, message, output):
@@ -55,7 +50,7 @@ interrupt = False
 def signal_handler(signal, frame):
     global interrupt
     interrupt = True
-    print "User interrupt received!"
+    print("User interrupt received!")
     time1 = time.time()
     # for the next <5> secs check if all threads are finished
     threads_done = False
@@ -117,10 +112,10 @@ class AbstractWorker(threading.Thread):
         try:
             res = self.connect()
         except NotImplementedError as e:
-            print "Not implemented: " + str(self.__class__) + " function: " +  str(e)
+            print("Not implemented: " + str(self.__class__) + " function: " +  str(e))
             pass
         except Exception as e:
-            print "Exception in Worker: " + str (e)
+            print("Exception in Worker: " + str (e))
             pass
         if (Tasks.Taskresult.success != res.result):
             g_notifications.node_connected (self.node, False, "Failed to connect: " + res.message)
@@ -189,12 +184,12 @@ class AbstractWorker(threading.Thread):
                     assert (None != task_result)
                     g_notifications.task_completed (self.node,  task, task_result.result, task_result.message, task_result.output)                   
                 else:
-                    print "UNSUPPORTED OPERATION!"
+                    print("UNSUPPORTED OPERATION!")
             except NotImplementedError as e:
-                print "Not implemented" + str (e)
+                print("Not implemented" + str (e))
                 pass
             except Exception as e2:
-                print "Exception in Worker: " + str (e2)
+                print("Exception in Worker: " + str (e2))
                 pass
             if (interrupt):
                 break
@@ -225,10 +220,10 @@ class AbstractWorker(threading.Thread):
         try:
             res = self.disconnect()
         except NotImplementedError as e:
-            print "Not implemented: " + str(self.__class__) + " function: " +  str(e)
+            print("Not implemented: " + str(self.__class__) + " function: " +  str(e))
             pass
         except Exception as e:
-            print "Exception in Worker:" + str (e)
+            print("Exception in Worker:" + str (e))
             pass
             
         if (False == res):
@@ -242,25 +237,25 @@ class AbstractWorker(threading.Thread):
 
 class TestWorker (AbstractWorker):
     def connect (self):
-        print "TestWorker connects to '" + self.node.hostname + "'"
+        print("TestWorker connects to '" + self.node.hostname + "'")
         return TaskExecutionResult(Tasks.Taskresult.success, "", "")    
     def disconnect (self):       
-        print "TestWorker disconnects from '" + self.node.hostname + "'"
+        print("TestWorker disconnects from '" + self.node.hostname + "'")
         return TaskExecutionResult(Tasks.Taskresult.success, "", "")     
     def exec_run_per_host (self, task):
-        print "TestWorker executes per host "        
+        print("TestWorker executes per host ")
         return TaskExecutionResult(Tasks.Taskresult.success, "exec_run_per_host successful", "")
     def exec_run (self, task):
-        print "TestWorker executes '" + task.name + "' and runs '" +task.command+ "'"
+        print("TestWorker executes '" + task.name + "' and runs '" +task.command+ "'")
         return TaskExecutionResult(Tasks.Taskresult.success, "exec_run successful", "")        
     def exec_put (self, task):
-        print "TestWorker puts '" + task.name + "' " + task.src + "' '" + task.dest+ "'"
+        print("TestWorker puts '" + task.name + "' " + task.src + "' '" + task.dest+ "'")
         return TaskExecutionResult(Tasks.Taskresult.success, "exec_put successful", "")             
     def exec_get (self, task):
-        print "TestWorker gets '" + task.name + "' " + task.src + "' '" + task.dest+ "'"
+        print("TestWorker gets '" + task.name + "' " + task.src + "' '" + task.dest+ "'")
         return TaskExecutionResult(Tasks.Taskresult.success, "exec_get successful", "")     
     def interrupt_task (self):
-        print "TestWorker task is interrupted by timeout"  
+        print("TestWorker task is interrupted by timeout")
 
 class LocalWorker (AbstractWorker):
     def __init__(self, threadID, node, tasks):
@@ -295,7 +290,7 @@ class LocalWorker (AbstractWorker):
         except subprocess.CalledProcessError as e:
             returncode = e.returncode
         except Exception as e:
-            print e           
+            print(e)
         if (task.expected_return_code != -1) and (task.expected_return_code != returncode):
             return TaskExecutionResult(Tasks.Taskresult.return_value_did_not_match, "Expected return code " + str(task.expected_return_code) +" but got " +str(returncode) +"", output)  
         if (task.expected_output != None):
@@ -589,69 +584,6 @@ class RemoteSSHWorker (AbstractWorker):
         g_logger.log (self.node.hostname + " : Task interrupted by timeout")
         self.task_interrupted = True   
 
-class HenWorker (RemoteSSHWorker):
-    def connect(self):
-        self.transport = None
-        if (interrupt):
-            return TaskExecutionResult(Tasks.Taskresult.user_interrupt, "interrupted by user", "")
-        
-        try:
-            # Connect to gateway
-            g_logger.log('Connecting to hen gateway %s' % g_configuration.hen_gw)
-            sshgw = paramiko.SSHClient()
-            sshgw.load_system_host_keys()
-            sshgw.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            
-            sshgw.connect(g_configuration.hen_gw,
-                        22,
-                        username=g_configuration.hen_gw_username, 
-                        timeout=10,
-                        key_filename=g_configuration.hen_gw_keyfile,
-                        password=g_configuration.hen_gw_keyfile_password)
-            
-            # Create a new channel from gateway to node
-            g_logger.log('Connecting to node %s through hen gateway' % self.node.hostname)
-
-            port = 22 if self.node.port is None else self.node.port
-            transgw = sshgw.get_transport()
-            nodechannel = transgw.open_channel('direct-tcpip', (self.node.hostname, port), ('127.0.0.1', 0))
-            self.transport = paramiko.Transport(nodechannel)
-            self.transport.start_client()
-            
-            # Node authentication
-            if self.node.username is not None: # username/password supplied in node file
-                self.transport.auth_password(self.node.username, self.node.password)
-
-            elif g_configuration.hen_node_keyfile is not None: # Private key supplied in config
-                for pkey_class in (paramiko.RSAKey, paramiko.DSSKey):
-                    try:
-                        key = pkey_class.from_private_key_file(g_configuration.hen_node_keyfile, g_configuration.hen_node_password)
-                        break
-                    except paramiko.SSHException, e:
-                        pass
-                self.transport.auth_publickey(g_configuration.hen_node_username, key)
-            
-            else:
-                self.transport.auth_password(g_configuration.hen_node_username, g_configuration.hen_node_password)
-            
-            self.sshgw = sshgw # not needed later but to avoid gc disconnecting us
-            
-        except (IOError,
-                paramiko.SSHException,
-                paramiko.BadHostKeyException, 
-                paramiko.AuthenticationException,
-                socket.error) as e:  
-            g_logger.log (self.node.hostname + " : Error while trying to connect: " + str(e))
-            return TaskExecutionResult (Tasks.Taskresult.fail, str(e), "")
-
-        g_logger.log (self.node.hostname + " : Connected!")
-        return TaskExecutionResult (Tasks.Taskresult.success, "", "")
-    
-    def disconnect(self):       
-        if (None == self.transport):
-            return TaskExecutionResult (Tasks.Taskresult.fail, "", "")
-        self.transport.close()
-        return TaskExecutionResult (Tasks.Taskresult.success, "", "")
 
 class PlanetLabWorker (RemoteSSHWorker):
     def connect (self):
@@ -772,7 +704,7 @@ class Worker:
                 self.current_workers += 1
             for worker in self.workers_running:
                 if not worker.thread.isAlive():
-                    print worker.node.hostname + " finished"                    
+                    print(worker.node.hostname + " finished")
                     self.workers_running.remove(worker)
                     self.workers_finished.append(worker)
                     self.current_workers -= 1

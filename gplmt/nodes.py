@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 #    This file is part of GNUnet.
 #    (C) 2010 Christian Grothoff (and other contributing authors)
@@ -17,22 +16,19 @@
 #    along with GNUnet; see the file COPYING.  If not, write to the
 #    Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 #    Boston, MA 02110-1301, USA.
-#
-# GNUnet Planetlab deployment and automation toolset 
-#
-# Nodes
 
-try:
-    import sys 
-    import os 
-    import urllib
-    import xmlrpclib
-    import socket
-    import gplmt.Util as Util
-except ImportError as e: 
-    
-    print "That's a bug! please check README: " + str(e)
-    sys.exit (1) 
+"""
+GNUnet Planetlab deployment and automation toolset 
+
+Nodes
+"""
+
+import sys 
+import os 
+import urllib
+import xmlrpc
+import socket
+from .util import *
 
 class NodeResult:
     def __init__(self, hostname, port = None, username = None, password = None):
@@ -97,7 +93,7 @@ class Nodes:
                     self.gplmt_logger.log ("Found node '" + Util.print_ssh_connection (node) + "'")
             fobj.close()
         except IOError:
-            print "File " + self.gplmt_filename + " not found"
+            print("File " + self.gplmt_filename + " not found")
             return False
         self.gplmt_logger.log ("Loaded " + str(len(self.node_results)) + " node_results")
         return True
@@ -124,21 +120,20 @@ class PlanetLabNodes:
         self.configuration = configuration
         self.node_results = list ()
     def load (self):        
-
-        if (self.configuration.pl_password == ""):
-            print "No PlanetLab password given in configuration fail!"
+        if self.configuration.pl_password == "":
+            print("No PlanetLab password given in configuration fail!")
             return False
         if (self.configuration.pl_username == ""):            
-            print "No PlanetLab username given in configuration, fail!"
+            print("No PlanetLab username given in configuration, fail!")
             return False
         if (self.configuration.pl_api_url == ""):            
-            print "No PlanetLab API url given in configuration, fail!"
+            print("No PlanetLab API url given in configuration, fail!")
             return False
         self.gplmt_logger.log ("Retrieving node_results assigned to slice '" + self.configuration.pl_slicename + "' for user " +self.configuration.pl_username)
         try:
-            server = xmlrpclib.ServerProxy(self.configuration.pl_api_url)
+            server = xmlrpc.client.ServerProxy(self.configuration.pl_api_url)
         except:
-            print "Could not connect to PlanetLab API, fail!"
+            print("Could not connect to PlanetLab API, fail!")
             return False
         
         slice_data = {}
@@ -153,7 +148,7 @@ class PlanetLabNodes:
             node_ids = server.GetSlices(auth, [slice_data['name']], ['node_ids'])[0]['node_ids']
             node_hostnames = [node['hostname'] for node in server.GetNodes(auth, node_ids, ['hostname'])]
         except Exception as e:
-            print "Could not retrieve data from PlanetLab API: " + str(e)
+            print("Could not retrieve data from PlanetLab API: " + str(e))
             return False            
         
         for node in node_hostnames:
@@ -163,6 +158,3 @@ class PlanetLabNodes:
         self.gplmt_logger.log ("Planetlab API returned " + str(len(self.node_results)) + " node_results")     
         return True
 
-if __name__ == "__main__":
-    print "Nothing to do here!"
-    sys.exit(1)

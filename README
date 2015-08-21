@@ -51,10 +51,8 @@ Dependencies:
 
 These are the direct dependencies for running gplmt:
 
-- Python		>= 2.7
-- ElementTree		>= 1.3
+- Python		>= 3.4
 - Paramiko		>= 1.7
-- minixsv		>= 0.9
 
 The version numbers represent the versions we used to develop gplmt.
 
@@ -73,17 +71,11 @@ installer:
 
 http://www.pip-installer.org/en/latest/index.html
 
-ElementTree
+lxml >= 3.4.4
 --------
 
-On GNU/Linux use: sudo pip install elementtree
-Or check http://effbot.org/zone/element-index.htm
-
-minixsv
---------
-
-On GNU/Linux use: sudo pip install minixsv
-Or check http://pypi.python.org/pypi/minixsv/0.7/
+On GNU/Linux use: sudo pip3 install lxml
+Or check https://pypi.python.org/pypi/lxml
 
 Paramiko (Bluehorn fork)
 --------

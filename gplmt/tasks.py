@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #
 #    This file is part of GNUnet.
 #    (C) 2010 Christian Grothoff (and other contributing authors)
@@ -17,29 +16,23 @@
 #    along with GNUnet; see the file COPYING.  If not, write to the
 #    Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 #    Boston, MA 02110-1301, USA.
-#
-# GNUnet Planetlab deployment and automation toolset 
-#
-# Nodes
-try: 
-    import Util
-    import sys
-    import os
-    import re
-    import gplmt
-    from datetime import datetime
-    from xml.parsers import expat  
-    from minixsv import pyxsval as xsv 
-    from elementtree import ElementTree
-    elementtree_loaded = True 
-    from genxmlif import GenXmlIfError
-    # gplmt imports
-    import Targets as Targets
-except ImportError as e: 
-    print "That's a bug! please check README: " +  __file__+ " " + str (e)
-    sys.exit(1)
-    
 
+"""
+GNUnet Planetlab deployment and automation toolset 
+
+Nodes
+"""
+
+import sys
+import os
+import re
+import gplmt
+from datetime import datetime
+from xml.parsers import expat  
+from lxml.etree import ElementTree
+from .util import *
+from .targets import *
+    
 glogger = None
 
 supported_operations = ["run", "monitor", "get", "put", "run_per_host"]
@@ -177,7 +170,7 @@ def handle_task (elem, tasks):
         if ((child.tag == "command_file") and (child.text != None)):
             t.command_file = Util.handle_filename(child.text)
             if (False == os.path.exists(t.command_file)):
-                print "Command file '" +t.command_file+ "' not existing"
+                print("Command file '" +t.command_file+ "' not existing")
                 sys.exit()
                 return None 
                  
@@ -191,12 +184,12 @@ def handle_task (elem, tasks):
             try:
                 t.timeout = int(child.text)
             except ValueError:
-                print "Invalid timeout '"+child.text+"' for task id " + str (t.id) + " name " + t.name
+                print("Invalid timeout '"+child.text+"' for task id " + str (t.id) + " name " + t.name)
         if (child.tag == "expected_return_code"):
             try:
                 t.expected_return_code = int(child.text)
             except ValueError:
-                print "Invalid expected return code '" +child.text+ "' for task id " + str (t.id) + " name " + t.name
+                print("Invalid expected return code '" +child.text+ "' for task id " + str (t.id) + " name " + t.name)
         if ((child.tag == "expected_output") and (child.text != None)):
             t.expected_output = child.text                            
         if ((child.tag == "stop_on_fail") and (child.text != None)):
@@ -215,38 +208,38 @@ def handle_task (elem, tasks):
         
         if ((child.tag == "node") and (child.text != None)):
             t.node = child.text
-            print "Node: " + t.node
+            print("Node: " + t.node)
             
         if ((child.tag == "start_absolute") and (child.text != None)):
             try:
                 t.start_absolute = datetime.strptime(child.text, "%Y-%m-%dT%H:%M:%S")
             except ValueError:
-                print "Invalid absolute start time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name
-            print "start_absolute: " + t.start_absolute.strftime("%A, %d. %B %Y %I:%M%p")
+                print("Invalid absolute start time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name)
+            print("start_absolute: " + t.start_absolute.strftime("%A, %d. %B %Y %I:%M%p"))
         
         if ((child.tag == "stop_absolute") and (child.text != None)):
             try:
                 t.stop_absolute = datetime.strptime(child.text, "%Y-%m-%dT%H:%M:%S")
             except ValueError:
-                print "Invalid absolute stop time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name
-            print "stop_absolute: " + t.stop_absolute.strftime("%A, %d. %B %Y %I:%M%p")
+                print("Invalid absolute stop time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name)
+            print("stop_absolute: " + t.stop_absolute.strftime("%A, %d. %B %Y %I:%M%p"))
                 
         if ((child.tag == "start_relative") and (child.text != None)):
             try:
                 t.start_relative = parse_relative(child.text)
             except ValueError:
-                print "Invalid relative start time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name
-            print "start_relative: " + str(t.start_relative)
+                print("Invalid relative start time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name)
+            print("start_relative: " + str(t.start_relative))
             
         if ((child.tag == "stop_relative") and (child.text != None)):
             try:
                 t.stop_relative = parse_relative(child.text)
             except ValueError:
-                print "Invalid relative stop time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name
-            print "stop_relative: " + str(t.stop_relative)
+                print("Invalid relative stop time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name)
+            print("stop_relative: " + str(t.stop_relative))
 
     if (False == t.check()):
-        print "Parsed invalid task with id " + str (t.id) + " name '" + t.name + "'"
+        print("Parsed invalid task with id " + str (t.id) + " name '" + t.name + "'")
         return None 
     else:
         t.log ()
@@ -272,7 +265,7 @@ def handle_parallel (elem, tasks):
             t = handle_task (elem)
             if (None != t):
                 ptask.set.append(t)
-                print "Added " + t.name + " to set"
+                print("Added " + t.name + " to set")
         elif (elem.tag == "parallel"):
             glogger.log ("x")
         #    handle_parallel (elem, l)
@@ -280,7 +273,7 @@ def handle_parallel (elem, tasks):
             glogger.log ("x")
         #        handle_sequence (elem, l)
         else:
-            print "Invalid element in task file: " + elem.tag
+            print("Invalid element in task file: " + elem.tag)
     tasks.l.append (ptask)            
     
 def handle_child (elem, tasks):
@@ -294,7 +287,7 @@ def handle_child (elem, tasks):
     elif (elem.tag == "sequence"):
         handle_sequence (elem, tasks)
     else:
-        print "Invalid element in task file: " + elem.tag
+        print("Invalid element in task file: " + elem.tag)
 
 def handle_options (root, tasks):
     for child in root:
@@ -307,17 +300,17 @@ def handle_options (root, tasks):
                 tasks.log_dir = child.text
                 glogger.log ("Tasklist specified log dir: '" + str(tasks.log_dir) + "'")
         else:
-            print "Invalid option in task file: " + str(child.tag)
+            print("Invalid option in task file: " + str(child.tag))
 
 def print_sequence (l):
     for i in l:
-        print "->",
+        print("->", end="")
         if (i.__class__.__name__ == "Task"):
-            print i.name,
+            print(i.name, end="")
         elif (i.__class__.__name__ == "Taskset"):
-            print "{",
+            print("{", end="")
             print_sequence (i.set)
-            print "}",
+            print("}", end="")
 
     
 
@@ -359,27 +352,27 @@ class Tasklist:
         try:
             xsv.parseAndValidate (self.filename)
         except xsv.xsvalErrorHandler.XsvalError as e:
-            print "File '" + self.filename + "' does not validate against schema: \n" + str(e)
+            print("File '" + self.filename + "' does not validate against schema: \n" + str(e))
             return False
         except GenXmlIfError as e:
-            print "File '" + self.filename + "' is not well-formed: \n" + str(e)
+            print("File '" + self.filename + "' is not well-formed: \n" + str(e))
             return False
         except IOError:
-            print "File '" + self.filename + "' not found \n"
+            print("File '" + self.filename + "' not found \n")
             return False
         
         try:
             root = ElementTree.parse (self.filename).getroot()
-            if (None != root.attrib.get("name")):
+            if None != root.attrib.get("name"):
                 self.name = root.attrib.get("name")
-            if (None != root.attrib.get("enabled")):
-                if (False == root.attrib.get("enabled")):
+            if None != root.attrib.get("enabled"):
+                if False == root.attrib.get("enabled"):
                     enabled = False
         except expat.ExpatError as e:
-            print "File '" + self.filename + "'is malformed: " + str(e)
+            print("File '" + self.filename + "'is malformed: " + str(e))
             return False                
         except IOError:
-            print "File '" + self.filename + "' not found"
+            print("File '" + self.filename + "' not found")
             return False
         if (enabled == True):
             for child in root:
@@ -388,7 +381,7 @@ class Tasklist:
                 else:
                     handle_child (child, self)
         else:
-            print "Tasklist " + self.filename + " was disabled"
+            print("Tasklist " + self.filename + " was disabled")
         #print_sequence (self.l)
         self.logger.log("Loaded %s tasks" % len(self.l))
         
@@ -408,7 +401,4 @@ class Tasklist:
             return item
         else:
             return None
-        
-if __name__ == "__main__":
-    print "Nothing to do here!"
-    sys.exit(1)
+

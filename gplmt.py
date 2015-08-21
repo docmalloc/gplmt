@@ -19,23 +19,25 @@
 #    Boston, MA 02110-1301, USA.
 
 """
-GNUnet Planetlab deployment and automation toolset 
+GNUnet Planetlab deployment and automation toolset
 
 Main file
 """
 
 import argparse
-import sys
-import getopt, getpass
-from elementtree import ElementTree
+import getopt
+import getpass
+import logging
 import paramiko
-import minixsv
-from gplmt import Targets
-from gplmt import Util
+import sys
+from lxml.etree import ElementTree
+from gplmt import Target
 from gplmt import Configuration
-from gplmt import Tasks as Tasklist
+from gplmt import Tasklist
 from gplmt import Worker
-from gplmt import Notifications
+from gplmt.util import *
+from gplmt.notifications import *
+
 
 description = "GNUnet PlanetLab deployment and automation toolset"
 epilog = ("Report bugs to gnunet-developers@gnu.org. \n"
@@ -45,136 +47,123 @@ epilog = ("Report bugs to gnunet-developers@gnu.org. \n"
 
 parser = argparse.ArgumentParser(description=description, epilog=epilog)
 parser.add_argument(
-    '-c', '--config', help="use configuration file %(metavar)s",
+    '-c', '--config',
+    help="use configuration file %(metavar)s",
     dest='config_file')
 parser.add_argument(
-    '-n', '--nodes', help="use nodes file %(metavar)s",
+    '-n', '--nodes',
+    help="use nodes file %(metavar)s",
     dest='nodes_file')
 parser.add_argument(
-    '-l', '--tasks', help="use tasks file %(metavar)s",
+    '-l', '--tasks',
+    help="use tasks file %(metavar)s",
     dest='tasks_file')
 parser.add_argument(
-    '-t', '--target', help="one of local, remote_ssh, planetlab"
+    '-t', '--target',
+    help="one of local, remote_ssh, planetlab",
     dest='target')
 parser.add_argument(
-    '-C', '--command', help="run single command",
+    '-C', '--command',
+    help="run single command",
     dest='command')
-parser.add_argument('-a', '--all', help="use all nodes assigned to PlanetLab slice instead of nodes file")
 parser.add_argument(
-    '-p', '--password', help="password to access PlanetLab API",
+    '-a', '--all',
+    help="use all nodes assigned to PlanetLab slice instead of nodes file")
+parser.add_argument(
+    '-p', '--password',
+    help="password to access PlanetLab API",
     dest='pl_password')
 parser.add_argument(
-    '-H', '--host', help="run tasklist on given host"
+    '-H', '--host',
+    help="run tasklist on given host",
     dest='single_host')
 parser.add_argument(
-    '-s', '--startid', help="start with this task id",
+    '-s', '--startid',
+    help="start with this task id",
     dest='startid')
 parser.add_argument(
-    '-v', '--verbose', help="be verbose", type=bool,
-    dest='verbose')
+    '-v', '--verbose',
+    help="be verbose",
+    type=bool, dest='verbose')
 
 
 def main():
-        if (config_file != None):                            
-            # Load configuration file
-            configuration = Configuration.Configuration (config_file, main.gplmt_logger);
-            if (configuration.load() == False):
-                print "Failed to load configuration..."
-                sys.exit(2)
-        else:
-            # Load default configuration file
-            configuration = Configuration.Configuration (None, main.gplmt_logger);
-            if (configuration.load() == False):
-                print "Failed to load default configuration..."
-                sys.exit(2)
-                
-        # Update configuration      
-        if (None != pl_password):
-            configuration.pl_password = pl_password
-        if (None != tasks_file):
-            configuration.gplmt_taskfile = tasks_file
-        if (None != nodes_file):
-            configuration.gplmt_nodesfile = nodes_file                        
-        
-    
-        # Load gplmt_taskfile file
-        if (None != command):
-            print "Loading single command : " + str (command)
-            tasklist = Tasklist.Tasklist (configuration.gplmt_taskfile, main.gplmt_logger, startid, configuration);
-            tasklist.load_singletask(command, main.gplmt_logger)
-        elif (configuration.gplmt_taskfile):      
-            print "Loading task file : " + configuration.gplmt_taskfile          
-            tasklist = Tasklist.Tasklist (configuration.gplmt_taskfile, main.gplmt_logger, startid, configuration);
-            if (tasklist.load() == False):
-                sys.exit(2)  
-        else:
-            print "No tasks given!"          
-            sys.exit(2)  
-             
-        # Check target
-        if ((target == undefined_target) and (tasklist.target == undefined_target)):  
-            print "No target to run on defined!"
-            return
-        if ((target == undefined_target) and (tasklist.target != undefined_target)): 
-                target = tasklist.target
-        else:
-            print "Duplicate target to run on defined, command line wins!" 
-            
-        print "Using target " +  str (target)       
-        
-        if (target == Targets.Target (Targets.Target.planetlab)):            
-            if (configuration.pl_password == None):
-                while ((configuration.pl_password == None) or (configuration.pl_password == "")):
-                    print "Please enter PlanetLab password:"            
-                    configuration.pl_password = getpass.getpass()
-                    configuration.pl_password = configuration.pl_password.strip()              
-    
-        # Load hosts files: single host, nodes files, planetlab
-        # command line beats configuration
-        if ((None == single_host) and (None == configuration.gplmt_nodesfile) and
-            (target != Targets.Target (Targets.Target.planetlab))):
-            print "No nodes to use given!\n"
-            usage()
-            sys.exit(4)
-            
-        # Use a single host
-        if (single_host != None):
-            main.gplmt_logger.log ("Using single node '" + single_host + "'")
-            nodes = Nodes.StringNodes (single_host, main.gplmt_logger)
-            if (nodes.load() == False):
-                sys.exit(5) 
-        # Use a nodes file
-        elif (None != configuration.gplmt_nodesfile):
-            main.gplmt_logger.log ("Using node file '" + configuration.gplmt_nodesfile + "'")
-            nodes = Nodes.Nodes (configuration.gplmt_nodesfile, main.gplmt_logger);
-            if (nodes.load() == False):
-                sys.exit(7)      
-        elif (target == Targets.Target (Targets.Target.planetlab)):
-            # Load PlanetLab nodes                
-            main.gplmt_logger.log ("Using PlanetLab nodes")
-            nodes = Nodes.PlanetLabNodes (configuration, main.gplmt_logger)
-            if (nodes.load() == False):
-                sys.exit(6)        
-        else:
-            print "No nodes file given!\n" 
-            sys.exit(8)      
-    
-        # Set up notification
-        if (configuration.gplmt_notifications == "simple"):
-            notifications = Notifications.SimpleNotification (main.gplmt_logger)
-        elif (configuration.gplmt_notifications == "result"):
-            notifications = Notifications.TaskListResultNotification (main.gplmt_logger)
-        else:
-            notifications = Notifications.TaskListResultNotification (main.gplmt_logger)
-    except KeyboardInterrupt:
-        sys.exit(0)
-# Start execution
+    args = parser.parse_args()
+    config = Configuration(args.config_file)
+    config.upgrade("pl_password", args.pl_password)
+    config.upgrade("gplmt_taskfile", args.tasks_file)
+    config.upgrade("gplmt_nodesfile", args.nodes_file)
+
+    if command is not None:
+        print("Loading single command:", command)
+        tasklist = Tasklist(config.gplmt_taskfile, startid, config)
+        tasklist.load_singletask(command)
+    elif configuration.gplmt_taskfile is not None:
+        print("Loading task file : ", configuration.gplmt_taskfile)
+        tasklist = Tasklist(configuration.gplmt_taskfile, main.gplmt_logger, startid, configuration)
+        tasklist.load()
+    else:
+        print("No tasks or commands given!")
+        sys.exit(2)
+
+    if args.target == Target.undefined and tarklist.target == Target.undefined:
+        print("No target to run on defined!")
+        sys.exit(3)
+
+    if args.target == Target.undefined and tasklist.target != Target.undefined:
+        target = tasklist.target
+    else:
+        target = args.target
+        print("Duplicate target to run on defined, command line wins!")
+
+    print("Using target ", target)
+
+    if target == Target.planetlab and configuration.pl_password is None:
+        while configuration.pl_password is None or configuration.pl_password == "":
+            configuration.pl_password = getpass.getpass("Please enter PlanetLab password: ")
+            configuration.pl_password = configuration.pl_password.strip()
+    if (single_host is None and
+            configuration.gplmt_nodesfile is None and
+            target != Target.planetlab):
+        print("No nodes to use given!")
+        sys.exit(4)
+
+    # Use a single host
+    if single_host is not None:
+        logging.info("Using single node '%s'", single_host)
+        nodes = Nodes.StringNodes(single_host, main.gplmt_logger)
+        if not nodes.load():
+            sys.exit(5)
+    # Use a nodes file
+    elif configuration.gplmt_nodesfile is not None:
+        logging.info("Using node file '%s'", configuration.gplmt_nodesfile)
+        nodes = Nodes(configuration.gplmt_nodesfile, main.gplmt_logger)
+        if not nodes.load():
+            sys.exit(7)
+    elif target == Target.planetlab:
+        # Load PlanetLab nodes
+        main.gplmt_logger.log("Using PlanetLab nodes")
+        nodes = Nodes.PlanetLabNodes(configuration, main.gplmt_logger)
+        if (nodes.load() == False):
+            sys.exit(6)
+    else:
+        print("No nodes file given!")
+        sys.exit(8)
+
+    # Set up notification
+    if configuration.gplmt_notifications == 'simple':
+        notifications = Notifications.SimpleNotification(main.gplmt_logger)
+    elif (configuration.gplmt_notifications == 'result'):
+        notifications = Notifications.TaskListResultNotification(main.gplmt_logger)
+    else:
+        notifications = Notifications.TaskListResultNotification(main.gplmt_logger)
+
     try:
-        worker = Worker.Worker (main.gplmt_logger, configuration, target, nodes, tasklist, notifications)
+        worker = Worker.Worker(configuration, target, nodes, tasklist, notifications)
         worker.start()
     except KeyboardInterrupt:
-        print "Interrupt during execution, FIXME!"
-        sys.exit(0)        
+        print("Interrupt during execution, FIXME!")
+        sys.exit(0)
 
-if __name__ == "__main__":
-    main() 
+if __name__ == '__main__':
+    main()
