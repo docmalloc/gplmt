@@ -647,8 +647,6 @@ class NodeWorker ():
             self.thread = RemoteSSHWorker (1, self.node, self.tasks);
         elif (self.target == Targets.Target (Targets.Target.planetlab)):
             self.thread = PlanetLabWorker (1, self.node, self.tasks);
-        elif (self.target == Targets.Target (Targets.Target.hen)):
-            self.thread = HenWorker (1, self.node, self.tasks);
         return        
     def start (self):
         g_logger.log ("Starting execution for node " + self.node.hostname)

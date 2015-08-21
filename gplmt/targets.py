@@ -32,5 +32,4 @@ class Target(Enum):
   local = 2
   remote_ssh = 3
   planetlab = 4
-  hen = 5
 
