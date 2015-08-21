@@ -28,14 +28,43 @@ import os
 import urllib
 import xmlrpc
 import socket
-from .util import *
+from collections import namedtuple
+from .configuration import ConfigurationError
 
-class NodeResult:
-    def __init__(self, hostname, port = None, username = None, password = None):
+
+class NodeFormatError(Exception):
+    pass
+
+
+class PlanetLabError(Exception):
+    pass
+
+
+class Node:
+    def __init__(self, hostname, port=None, username=None, password=None):
         self.hostname = hostname
         self.port = port
         self.username = username
         self.password = password
+
+    def __str__(self):
+        res = ""
+        cred = ""
+        if node.hostname != None:
+            res = node.hostname;
+        else:
+            return res;        
+        if node.port != None:
+            res += ":" + str(node.port);
+                    
+        if node.username != None:
+            cred = node.username;
+        if node.password != None:
+            cred += ":" + node.password;
+        if "" != cred :
+            res = cred + "@" + res;
+        return res
+
 
     @staticmethod
     def parse(line):
@@ -72,64 +101,52 @@ class NodeResult:
         elif len(hostport) > 2:
             raise Exception("Invalid node definition: " + line)
             return None 
-        return NodeResult(hostname, port, username, password)
+        return Node(hostname, port, username, password)
 
 
-class Nodes:
-    def __init__(self, filename, logger):
-        assert (None != logger)
-        self.gplmt_logger = logger
-        self.gplmt_filename = filename
-        self.node_results = list ()
-    def load (self):        
-        self.gplmt_logger.log ("Loading node_results file '" + self.gplmt_filename + "'")
-        try:
-            fobj = open (self.gplmt_filename, "r") 
-            for line in fobj: 
+class NodeList:
+    def __init__(self, filename):
+        self.filename = filename
+        self.nodes = []
+        logging.info("Loading node_results file '" + self.gplmt_filename + "'")
+
+        with open(self.gplmt_filename, "r") as f:
+            for line in f: 
                 line = line.strip() 
-                node = NodeResult.parse(line)                
-                if (None != node):
-                    self.node_results.append(node)
-                    self.gplmt_logger.log ("Found node '" + Util.print_ssh_connection (node) + "'")
-            fobj.close()
-        except IOError:
-            print("File " + self.gplmt_filename + " not found")
-            return False
-        self.gplmt_logger.log ("Loaded " + str(len(self.node_results)) + " node_results")
-        return True
+                if len(line) == 0 or line.startswith("#"):
+                    continue
+                node = NodeResult.parse(line)
+                self.nodes.append(node)
+                logging.info("Found node '%s'", node)
 
-class StringNodes:
-    def __init__(self, str, logger):
-        assert (None != logger)
+        logging.info("Loaded %d node results", len(self.node_results))
+
+
+class StringNodeList:
+    def __init__(self, node_list_string):
         self.str = str
-        self.gplmt_logger = logger
-        self.node_results = list ()
-    def load (self):        
-        self.gplmt_logger.log ("Loading node_results '" + self.str + "'")
-        node = NodeResult.parse(self.str)
-        if (None == node):
-            return False  
-        self.node_results.append(node)
-        self.gplmt_logger.log ("Loaded node '" +Util.print_ssh_connection (node)+ "'")
-        return True    
+        logging.info("Loading node_results '%s'", node_list_string)
+        node = Node.parse(node_list_string)
+        self.nodes = [node]
+        logging.info("Loaded node '" +Util.print_ssh_connection (node)+ "'")
 
-class PlanetLabNodes:
-    def __init__(self, configuration, logger):
-        assert (None != logger)
-        self.gplmt_logger = logger
+
+class PlanetLabNodeList:
+    def __init__(self, configuration):
         self.configuration = configuration
-        self.node_results = list ()
-    def load (self):        
-        if self.configuration.pl_password == "":
-            print("No PlanetLab password given in configuration fail!")
-            return False
-        if (self.configuration.pl_username == ""):            
-            print("No PlanetLab username given in configuration, fail!")
-            return False
-        if (self.configuration.pl_api_url == ""):            
-            print("No PlanetLab API url given in configuration, fail!")
-            return False
-        self.gplmt_logger.log ("Retrieving node_results assigned to slice '" + self.configuration.pl_slicename + "' for user " +self.configuration.pl_username)
+        self.nodes = []
+        
+        c = configuration
+        if c.pl_password is None or c.pl_password == "":
+            raise ConfigurationError("No PlanetLab password given in configuration.")
+        if c.pl_username is None or c.pl_username == "":
+            raise ConfigurationError("No PlanetLab username given in configuration.")
+        if c.pl_api_url is None or c.pl_api_url == "":
+            raise ConfigurationError("No PlanetLab API url given in configuration.")
+
+        logging.info("Retrieving node_results assigned to slice '%s' for user '%s'",
+                self.configuration.pl_slicename, self.configuration.pl_username)
+
         try:
             server = xmlrpc.client.ServerProxy(self.configuration.pl_api_url)
         except:
@@ -148,13 +165,12 @@ class PlanetLabNodes:
             node_ids = server.GetSlices(auth, [slice_data['name']], ['node_ids'])[0]['node_ids']
             node_hostnames = [node['hostname'] for node in server.GetNodes(auth, node_ids, ['hostname'])]
         except Exception as e:
-            print("Could not retrieve data from PlanetLab API: " + str(e))
-            return False            
+            raise PlanetLabError("Could not retrieve data from PlanetLab API: " + str(e))
         
         for node in node_hostnames:
             n = NodeResult(node, 22, self.configuration.pl_slicename, None)
-            self.gplmt_logger.log ("Planetlab API returned: " + n.hostname)            
-            self.node_results.append(n)
-        self.gplmt_logger.log ("Planetlab API returned " + str(len(self.node_results)) + " node_results")     
-        return True
+            logging.info("Planetlab API returned: " + n.hostname)
+            self.nodes.append(n)
+
+        logging.info("Planetlab API returned %s nodes", len(self.node_results))
 

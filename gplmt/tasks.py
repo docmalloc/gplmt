@@ -20,24 +20,24 @@
 """
 GNUnet Planetlab deployment and automation toolset 
 
-Nodes
+Parse taskslists.
 """
 
 import sys
 import os
 import re
-import gplmt
+import logging
+from enum import Enum
 from datetime import datetime
-from xml.parsers import expat  
 from lxml.etree import ElementTree
-from .util import *
 from .targets import *
-    
-glogger = None
+import copy
+
 
 supported_operations = ["run", "monitor", "get", "put", "run_per_host"]
 
-class Taskresult:
+
+class Taskresult(Enum):
     unspecified = -1
     success = 0
     timeout = 1
@@ -47,13 +47,15 @@ class Taskresult:
     src_file_not_found = 5
     user_interrupt = 6    
 
-class Operation:
-    none=0
-    run=1
-    monitor=2
-    get=3
-    put=4
-    run_per_host=5
+
+class Operation(Enum):
+    none = 0
+    run = 1
+    monitor = 2
+    get = 3
+    put = 4
+    run_per_host = 5
+
 
 class Task:
     def __init__(self):
@@ -78,75 +80,62 @@ class Task:
         self.stop_relative = sys.maxint
         
     def copy (self):
-        t = Task ()
-        t.id = self.id 
-        t.name = self.name
-        t.type = self.type
-        t.command = self.command
-        t.arguments = self.arguments
-        t.timeout = self.timeout
-        t.expected_return_code = self.expected_return_code
-        t.expected_output = self.expected_output
-        t.stop_on_fail = self.stop_on_fail
-        t.set = self.set
-        t.src = self.src
-        t.dest = self.dest
-        t.command_file = self.command_file
-        t.output_prefix = self.output_prefix
-        t.node = self.node
-        t.start_absolute = self.start_absolute
-        t.stop_absolute = self.stop_absolute
-        t.start_relative = self.start_relative
-        t.stop_relative = self.stop_relative
-        return t
+        return copy.copy(self)
+
     def log (self):
-        glogger.log ("Task " + str(self.id) + ": " + self.name)
+        logger.info(("Task " + str(self.id) + ": " + self.name)
+
     def check (self):
-        if (Operation.none):
+        """
+        Do some basic sanity checks on the task.
+        """
+        if self.type == Operation.none:
             return False
-        if (self.type == Operation.run):                   
-            if ((self.id == -1) or (self.name == "") or (self.command == "")):
+        if self.type == Operation.run:
+            if self.id == -1 or self.name == "" or self.command == "":
                 return False
-        if (self.type == Operation.put):                   
-            if ((self.id == -1) or (self.name == "") or 
-                (self.src == None) or (self.dest == None)):
+        if self.type == Operation.put:
+            if (self.id == -1 or self.name == "" or 
+                self.src == None or self.dest == None):
                 return False
-        if (self.type == Operation.get):                   
-            if ((self.id == -1) or (self.name == "") or 
-                (self.src == None) or (self.dest == None)):
+        if self.type == Operation.get:
+            if (self.id == -1 or self.name == "" or 
+                self.src == None or self.dest == None):
                 return False            
-        if (self.type == Operation.run_per_host):                   
-            if ((self.id == -1) or (self.name == "") or (self.command_file == "")):
+        if self.type == Operation.run_per_host:
+            if (self.id == -1 or self.name == "" or self.command_file == ""):
                 return False                    
         return True
+
                         
 class Taskset:
     def __init__(self):
-        self.set = list()
+        self.set = []
 
-def parse_relative (text):
+def parse_relative(text):
     regex  = re.compile('(?P<sign>-?)P(?:(?P<years>\d+)Y)?(?:(?P<months>\d+)M)?(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?(?:(?P<seconds>\d+)S)?)?')
     duration = regex.match(text).groupdict(0)
     
-    return int(duration['seconds']) + 60 * (int(duration['minutes']) + 60 * (int(duration['hours']) + 24 * \
-    (int(duration['days']) + 31 * int(duration['months']) + 365 * int(duration ['years']))))
+    return (int(duration['seconds']) + 60 * (int(duration['minutes']) + 60 * (int(duration['hours']) + 24 *
+        (int(duration['days']) + 31 * int(duration['months']) + 365 * int(duration ['years'])))))
 
-def handle_task (elem, tasks):
-    t = Task ()
+
+def handle_task(elem, tasks):
+    t = Task()
     
-    if (None != elem.attrib.get("name")):
+    if 'name' in elem.attrib:
         t.name = elem.attrib.get("name")
 
-    if (None != elem.attrib.get("id")):
+    if 'id' in elem.attrib:
         t.id = elem.attrib.get("id")
     
-    if (tasks.startid != -1):
-        if (tasks.startid == t.id):
+    if tasks.startid != -1:
+        if tasks.startid == t.id:
             tasks.startid_found = True
-            glogger.log ("Task " + str (t.id) + " '" + t.name + "' has start ID") 
-        if (tasks.startid_found == False):
-            glogger.log ("Task " + str (t.id) + " '" + t.name + "' skipped")
-            return None;
+            logging.info("Task " + str(t.id) + " '" + t.name + "' has start ID") 
+        if tasks.startid_found == False:
+            logging.info("Task " + str(t.id) + " '" + t.name + "' skipped")
+            return None
     
     if (None != elem.attrib.get("enabled")):
         if ("FALSE" == str(elem.attrib.get("enabled")).upper()):
@@ -168,7 +157,7 @@ def handle_task (elem, tasks):
         
     for child in elem:
         if ((child.tag == "command_file") and (child.text != None)):
-            t.command_file = Util.handle_filename(child.text)
+            t.command_file = os.path.expanduser(child.text)
             if (False == os.path.exists(t.command_file)):
                 print("Command file '" +t.command_file+ "' not existing")
                 sys.exit()
@@ -238,28 +227,41 @@ def handle_task (elem, tasks):
                 print("Invalid relative stop time '" +child.text+ "' for task id " + str (t.id) + " name " + t.name)
             print("stop_relative: " + str(t.stop_relative))
 
-    if (False == t.check()):
+    if False == t.check():
         print("Parsed invalid task with id " + str (t.id) + " name '" + t.name + "'")
         return None 
     else:
         t.log ()
         return t
 
+
+def is_enabled(elem):
+    """
+    Check if a task element is enabled.
+
+    A task is only disabled when there is an "enabled" attribute and it's set
+    to false.
+    """
+    if 'enabled' in elem.attrib and elem.get('enabled').upper() == "FALSE":
+        return False
+    return True
+
+
 def handle_sequence (elem, tasks):
-    if (None != elem.attrib.get("enabled")):
-        if ("FALSE" == str(elem.attrib.get("enabled")).upper()):
-            glogger.log ("Element was disabled")
-            return
-    for child in elem:
+    if not is_enabled(elem):
+        logging.info("Element was disabled")
+    else:
+        for child in elem:
             handle_child (child, tasks)
             
+
 def handle_parallel (elem, tasks):
     glogger.log ("Found parallel execution with " + str(len(elem)) + " elements")
     if (None != elem.attrib.get("enabled")):
         if ("FALSE" == str(elem.attrib.get("enabled")).upper()):
             glogger.log ("Element was disabled")
             return
-    ptask = Taskset ()
+    ptask = Taskset()
     for child in elem:
         if (elem.tag in supported_operations):
             t = handle_task (elem)
@@ -267,42 +269,42 @@ def handle_parallel (elem, tasks):
                 ptask.set.append(t)
                 print("Added " + t.name + " to set")
         elif (elem.tag == "parallel"):
-            glogger.log ("x")
-        #    handle_parallel (elem, l)
+            raise Exception("not implemented")
         elif (elem.tag == "sequence"):
-            glogger.log ("x")
-        #        handle_sequence (elem, l)
+            raise Exception("not implemented")
         else:
             print("Invalid element in task file: " + elem.tag)
     tasks.l.append (ptask)            
     
+
 def handle_child (elem, tasks):
-    global support_operations
-    if (elem.tag in supported_operations):
-        t = handle_task (elem, tasks)
-        if (None != t):
+    if elem.tag in supported_operations:
+        t = handle_task(elem, tasks)
+        if is not None:
             tasks.l.append(t)
-    elif (elem.tag == "parallel"):
-        handle_parallel (elem, tasks)
-    elif (elem.tag == "sequence"):
-        handle_sequence (elem, tasks)
+    elif elem.tag == "parallel":
+        handle_parallel(elem, tasks)
+    elif elem.tag == "sequence":
+        handle_sequence(elem, tasks)
     else:
         print("Invalid element in task file: " + elem.tag)
 
+
 def handle_options (root, tasks):
     for child in root:
-        if (child.tag == "target"):
-            if (child.text != None):
+        if child.tag == "target":
+            if child.text is not None:
                 tasks.target = Targets.Target.create(child.text)
-                glogger.log ("Tasklist specified target: '" + str(tasks.target) + "'")
-        elif (child.tag == "log_dir"):
-            if (child.text != None):
+                logging.info("Tasklist specified target: '" + str(tasks.target) + "'")
+        elif child.tag == "log_dir":
+            if child.text is not None:
                 tasks.log_dir = child.text
-                glogger.log ("Tasklist specified log dir: '" + str(tasks.log_dir) + "'")
+                logging.info("Tasklist specified log dir: '" + str(tasks.log_dir) + "'")
         else:
             print("Invalid option in task file: " + str(child.tag))
 
-def print_sequence (l):
+
+def print_sequence(l):
     for i in l:
         print("->", end="")
         if (i.__class__.__name__ == "Task"):
@@ -313,22 +315,19 @@ def print_sequence (l):
             print("}", end="")
 
     
-
 class Tasklist:
-    def __init__(self, filename, logger, startid, configuration,
+    def __init__(self, filename, startid, configuration,
                  name="<Undefined>", log_dir=""):
-        assert (None != logger)
-        global glogger
-        glogger = logger
         global g_configuration;
         g_configuration = configuration
         self.logger = logger
         self.filename = filename
-        self.l = list ()
+        self.l = []
         self.startid = startid
         self.startid_found = False
         self.log_dir = log_dir
-        self.target = Targets.Target (Targets.Target.undefined)
+        self.target = Target.undefined
+
     def load_singletask (self, cmd, logger):
         t = Task()
         self.name = "Execute single command"
@@ -337,7 +336,7 @@ class Tasklist:
         t.type = Operation.run
         t.command = cmd
         t.timeout = 0
-        t.expected_return_code = -1
+        t.expected_return_code = None
         t.expected_output = None
         t.stop_on_fail = True
         t.set = None
@@ -346,56 +345,44 @@ class Tasklist:
         t.command_file = None
         t.output_prefix = None        
         self.l.append(t)
+
     def load (self):        
         self.logger.log ("Loading tasks file '" + self.filename + "'")
         enabled = True
-        try:
-            xsv.parseAndValidate (self.filename)
-        except xsv.xsvalErrorHandler.XsvalError as e:
-            print("File '" + self.filename + "' does not validate against schema: \n" + str(e))
-            return False
-        except GenXmlIfError as e:
-            print("File '" + self.filename + "' is not well-formed: \n" + str(e))
-            return False
-        except IOError:
-            print("File '" + self.filename + "' not found \n")
-            return False
-        
-        try:
-            root = ElementTree.parse (self.filename).getroot()
-            if None != root.attrib.get("name"):
-                self.name = root.attrib.get("name")
-            if None != root.attrib.get("enabled"):
-                if False == root.attrib.get("enabled"):
-                    enabled = False
-        except expat.ExpatError as e:
-            print("File '" + self.filename + "'is malformed: " + str(e))
-            return False                
-        except IOError:
-            print("File '" + self.filename + "' not found")
-            return False
-        if (enabled == True):
+
+        # TODO(FlorianDold): Enable validation for parsing
+        root = ElementTree.parse(self.filename).getroot()
+
+        if 'name' in root.attrib:
+            self.name = root.get("name")
+        # TODO(FlorianDold): this seems wrong
+        if None != root.attrib.get("enabled"):
+            if False == root.attrib.get("enabled"):
+                enabled = False
+
+        if enabled:
             for child in root:
-                if (child.tag == "options"):
-                    handle_options (child, self)
+                if child.tag == "options":
+                    handle_options(child, self)
                 else:
-                    handle_child (child, self)
+                    handle_child(child, self)
         else:
             print("Tasklist " + self.filename + " was disabled")
-        #print_sequence (self.l)
+
         self.logger.log("Loaded %s tasks" % len(self.l))
-        
-        return True        
-    def copy (self):
-        t = Tasklist (self.filename, self.logger, -1, g_configuration)
+
+    def copy(self):
+        t = Tasklist(self.filename, self.logger, -1, g_configuration)
         # Create a copy of the task list as described in 
         # http://docs.python.org/library/copy.html
         t.filename = self.filename
         t.name = self.name
         t.l = self.l[:]
         return t
-    def get (self):
-        if (len (self.l) > 0):
+
+    # TODO(FlorianDold): should be renamed, 'get' is a bad name
+    def get(self):
+        if len(self.l) > 0:
             item = self.l[0]
             self.l.remove(item)
             return item

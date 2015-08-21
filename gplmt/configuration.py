@@ -15,13 +15,16 @@
 #    along with GNUnet; see the file COPYING.  If not, write to the
 #    Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 #    Boston, MA 02110-1301, USA.
-#
-# GNUnet Planetlab deployment and automation toolset 
-#
-# Configuration
+
+"""
+GNUnet Planetlab deployment and automation toolset 
+
+Configuration
+"""
 
 
 import configparser
+import logging
 import os
 import sys
 from enum import Enum
@@ -51,11 +54,11 @@ class Configuration:
         try:
             # Strange API, config.read returns list of files
             # successfully parsed.
-            parsed_files = config.read(self.gplmt_filename)
+            parsed_files = self.config.read(filename)
         except configparser.Error as e:
             raise ConfigurationError("Error parsing configuration: " + str(e))
         if len(parsed_files) != 1:
-            raise ConfigurationError("Configuration file %s not found", filename)
+            raise ConfigurationError("Configuration file %s not found" % (filename))
 
         self._parse('pl_slicename', 'planetlab', 'slice')
         self._parse('pl_api_url', 'planetlab', 'api_url')

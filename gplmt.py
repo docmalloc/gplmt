@@ -84,11 +84,17 @@ parser.add_argument(
 parser.add_argument(
     '-v', '--verbose',
     help="be verbose",
-    type=bool, dest='verbose')
+    dest='verbose', action='store_true')
 
 
 def main():
     args = parser.parse_args()
+    fmt = "gplmt: %(message)s"
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO, format=fmt)
+    else:
+        logging.basicConfig(level=logging.WARN, format=fmt)
+
     config = Configuration(args.config_file)
     config.upgrade("pl_password", args.pl_password)
     config.upgrade("gplmt_taskfile", args.tasks_file)

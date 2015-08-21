@@ -23,7 +23,7 @@ GNUnet Planetlab deployment and automation toolset
 Notifications     
 """
 
-import gplmt.Tasks as Tasklist
+from .tasks import *
 import time
 import sys
 
