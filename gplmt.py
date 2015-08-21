@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 #    This file is part of GNUnet.
 #    (C) 2010 Christian Grothoff (and other contributing authors)
@@ -17,112 +17,64 @@
 #    along with GNUnet; see the file COPYING.  If not, write to the
 #    Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 #    Boston, MA 02110-1301, USA.
-#
-# GNUnet Planetlab deployment and automation toolset 
-#
-# Main file
 
-# Checking dependencies
-# ElementTree XML Parser
+"""
+GNUnet Planetlab deployment and automation toolset 
+
+Main file
+"""
+
+import argparse
 import sys
 import getopt, getpass
+from elementtree import ElementTree
+import paramiko
+import minixsv
+from gplmt import Targets
+from gplmt import Util
+from gplmt import Configuration
+from gplmt import Tasks as Tasklist
+from gplmt import Worker
+from gplmt import Notifications
 
-try: 
-    from elementtree import ElementTree
-    elementtree_loaded = True 
-except ImportError: 
-    elementtree_loaded = False
-try:
-    import paramiko
-    paramiko_loaded = True 
-except ImportError: 
-    paramiko_loaded = False 
-try:
-    import minixsv
-    minixsv_loaded = True 
-except ImportError: 
-    minixsv_loaded = False 
-try:
-    import gplmt.Targets as Targets
-    import gplmt.Util as Util
-    import gplmt.Configuration as Configuration
-    import gplmt.Nodes as Nodes
-    import gplmt.Tasks as Tasklist
-    import gplmt.Worker as Worker
-    import gplmt.Notifications as Notifications
-except ImportError as e: 
-    print "That's a bug! please check README: '" +  __file__+ "' " + str (e)
-    imports = False
-    
+description = "GNUnet PlanetLab deployment and automation toolset"
+epilog = ("Report bugs to gnunet-developers@gnu.org. \n"
+          "GNUnet home page: http://www.gnu.org/software/gnunet/ \n"
+          "General help using GNU software: http://www.gnu.org/gethelp/")
+
+
+parser = argparse.ArgumentParser(description=description, epilog=epilog)
+parser.add_argument(
+    '-c', '--config', help="use configuration file %(metavar)s",
+    dest='config_file')
+parser.add_argument(
+    '-n', '--nodes', help="use nodes file %(metavar)s",
+    dest='nodes_file')
+parser.add_argument(
+    '-l', '--tasks', help="use tasks file %(metavar)s",
+    dest='tasks_file')
+parser.add_argument(
+    '-t', '--target', help="one of local, remote_ssh, planetlab"
+    dest='target')
+parser.add_argument(
+    '-C', '--command', help="run single command",
+    dest='command')
+parser.add_argument('-a', '--all', help="use all nodes assigned to PlanetLab slice instead of nodes file")
+parser.add_argument(
+    '-p', '--password', help="password to access PlanetLab API",
+    dest='pl_password')
+parser.add_argument(
+    '-H', '--host', help="run tasklist on given host"
+    dest='single_host')
+parser.add_argument(
+    '-s', '--startid', help="start with this task id",
+    dest='startid')
+parser.add_argument(
+    '-v', '--verbose', help="be verbose", type=bool,
+    dest='verbose')
 
 
 def main():
-    global main
-    tasks_file = None
-    single_host = None
-    nodes_file = None
-    pl_password = None
-    config_file = None    
-    verbose = False
-    command = None
-    startid = -1
-    target = Targets.Target (Targets.Target.undefined)
-    undefined_target = Targets.Target(Targets.Target.undefined)
-    try:
-        main = Main ()
-        
-    # Init
-    # Check dependencies 
-        if (False == elementtree_loaded):
-            print "ElementTree XML parsing module is required for execution, please check README"
-            sys.exit(2)
-        if (False == paramiko_loaded):
-            print "paramiko SSH module is required for execution, please check README"
-            sys.exit(2)
-        if (False == minixsv_loaded):
-            print "minixsv module is required for execution, please check README"
-            sys.exit(2)       
-        
-    # Parse command line arguments
-        try:
-            opts, args = getopt.getopt(sys.argv[1:], "C:hvVc:n:l:t:ap:s:H:", ["help", "verbose", "config=", "nodes=", "tasklist=", "command=", "all", "password", "startid", "host"])
-        except getopt.GetoptError, err:
-            # print help information and exit:
-            print str(err) # will print something like "option -a not recognized"
-            usage()
-            sys.exit(2)
-        for o, a in opts:
-            if o in ("-V", "--verbose"):
-                verbose = True
-            elif o in ("-h", "--help"):
-                usage()
-                sys.exit()
-            elif o in ("-c", "--config"):
-                config_file = Util.handle_filename(a)
-            elif o in ("-H", "--host"):
-                single_host = a                     
-            elif o in ("-n", "--nodes"):
-                nodes_file = Util.handle_filename(a)
-            elif o in ("-t", "--target"):
-                target = Targets.Target.create(a)
-            elif o in ("-l", "--tasklist"):
-                tasks_file = Util.handle_filename(a)
-            elif o in ("-p", "--password"):
-                pl_password = a
-            elif o in ("-C", "--command"):
-                command = a                
-            elif o in ("-s", "--startid"):
-                startid = a                                        
-            else:
-                print "Unknown argument '" +str(o)+ "'"
-                usage()
-                sys.exit()
-    
-        if (verbose == True):
-            main.gplmt_logger = Util.Logger (True)
-        else:
-            main.gplmt_logger = Util.Logger (False)
-            
         if (config_file != None):                            
             # Load configuration file
             configuration = Configuration.Configuration (config_file, main.gplmt_logger);
@@ -224,33 +176,5 @@ def main():
         print "Interrupt during execution, FIXME!"
         sys.exit(0)        
 
-# Clean up
-
-
-# ---------------------------------------------------
-
-def usage():
-    print "GNUnet PlanetLab deployment and automation toolset\n\
-Arguments mandatory for long options are also mandatory for short options.\n\
-  -c, --config=FILENAME      use configuration file FILENAME\n\
-  -n, --nodes=FILENAME       use node file FILENAME\n\
-  -l, --tasks=FILENAME       use tasks file FILENAME\n\
-  -t, --target=TARGET        TARGET={local|remote_ssh|planetlab|hen}\n\
-  -C, --command=             run single commandgplmt_taskfile of taskfile, print output using -v\n\
-  -a, --all                  use all nodes assigned to PlanetLab slice instead of nodes file\n\
-  -p, --password             password to access PlanetLab API\n\
-  -H, --host                 run tasklist on given host\n\
-  -s, --startid              start with this task id \n\
-  -h, --help                 print this help\n\
-  -V, --verbose              be verbose \n\
-Report bugs to gnunet-developers@gnu.org. \n\
-GNUnet home page: http://www.gnu.org/software/gnunet/ \n\
-General help using GNU software: http://www.gnu.org/gethelp/"
-
-class Main:
-    gplmt_logger = None;
-    def __init__(self):
-        self.verbose = False;
-        
 if __name__ == "__main__":
     main() 
