@@ -1,0 +1,91 @@
+# Usually our root element is 'experiment'.
+# We do allow 'targets' and 'tasklist' as well,
+# which is useful for files that are only included.
+start = experiment | targets | tasklist
+
+
+experiment = element experiment {
+  element description { text }?,
+
+  options,
+
+  targets?,
+
+  element tasks { task* }?,
+
+  element steps { step* }
+}
+
+targets = element targets { target* }
+
+options = element options {
+  text
+}
+
+\include = element include {
+  attribute href { text },
+  attribute prefix { text}
+}
+
+target =
+  \include |
+  element ssh {
+    element hostname { text },
+    element port { text }?,
+    element password { text }?
+  } |
+  element planetlab-slice {
+    empty
+  } |
+  element local { empty } |
+  element group { empty }
+
+node = element node {
+  attribute alias { text }
+}
+
+tasklist = element tasklist { text }
+
+task = \include | sequence | parallel | run | put | get
+
+sequence = element sequence { sublist_body }
+parallel = element parellel { sublist_body }
+put = element put { copy_body }
+get = element get { copy_body }
+
+sublist_body =
+  start_time?,
+  stop_time?,
+  attribute name { text },
+  attribute enabled { xsd:boolean },
+  task*
+
+
+copy_body = 
+  element source { text },
+  element destination { text },
+  element stop_on_fail { xsd:boolean }
+
+run = element run {
+  start_time?,
+  stop_time?,
+  element command { text },
+  element arguments { text },
+  element timeout { xsd:integer },
+  element expected_return_code { xsd:integer },
+  element expected_output { text },
+  element stop_on_fail { xsd:boolean }
+}
+
+step =
+  element synchronize { empty } |
+  element run-task { text } |
+  element repeat { text }
+
+start_time =
+ element start_absolute { xsd:dateTime } |
+ element start_relative { xsd:duration } 
+
+stop_time =
+ element stop_absolute { xsd:dateTime } |
+ element stop_relative { xsd:duration } 

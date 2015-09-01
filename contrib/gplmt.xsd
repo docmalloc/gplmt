@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+  <!--
+    Usually our root element is 'experiment'.
+    We do allow 'targets' and 'tasklist' as well,
+    which is useful for files that are only included.
+  -->
+  <xs:element name="experiment">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" ref="description"/>
+        <xs:element ref="options"/>
+        <xs:element minOccurs="0" ref="targets"/>
+        <xs:element minOccurs="0" ref="tasks"/>
+        <xs:element ref="steps"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="description" type="xs:string"/>
+  <xs:element name="tasks">
+    <xs:complexType>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="task"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="steps">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="step"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="targets">
+    <xs:complexType>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="target"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="options" type="xs:string"/>
+  <xs:element name="include">
+    <xs:complexType>
+      <xs:attribute name="href" use="required"/>
+      <xs:attribute name="prefix" use="required"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:group name="target">
+    <xs:choice>
+      <xs:element ref="include"/>
+      <xs:element ref="ssh"/>
+      <xs:element ref="planetlab-slice"/>
+      <xs:element ref="local"/>
+      <xs:element ref="group"/>
+    </xs:choice>
+  </xs:group>
+  <xs:element name="ssh">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element ref="hostname"/>
+        <xs:element minOccurs="0" ref="port"/>
+        <xs:element minOccurs="0" ref="password"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="hostname" type="xs:string"/>
+  <xs:element name="port" type="xs:string"/>
+  <xs:element name="password" type="xs:string"/>
+  <xs:element name="planetlab-slice">
+    <xs:complexType/>
+  </xs:element>
+  <xs:element name="local">
+    <xs:complexType/>
+  </xs:element>
+  <xs:element name="group">
+    <xs:complexType/>
+  </xs:element>
+  <xs:element name="node">
+    <xs:complexType>
+      <xs:attribute name="alias" use="required"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="tasklist" type="xs:string"/>
+  <xs:group name="task">
+    <xs:choice>
+      <xs:element ref="include"/>
+      <xs:element ref="sequence"/>
+      <xs:element ref="parellel"/>
+      <xs:element ref="run"/>
+      <xs:element ref="put"/>
+      <xs:element ref="get"/>
+    </xs:choice>
+  </xs:group>
+  <xs:element name="sequence" type="sublist_body"/>
+  <xs:element name="parellel" type="sublist_body"/>
+  <xs:element name="put" type="copy_body"/>
+  <xs:element name="get" type="copy_body"/>
+  <xs:complexType name="sublist_body">
+    <xs:sequence>
+      <xs:element minOccurs="0" ref="start_time"/>
+      <xs:element minOccurs="0" ref="stop_time"/>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="task"/>
+    </xs:sequence>
+    <xs:attribute name="name" use="required"/>
+    <xs:attribute name="enabled" use="required" type="xs:boolean"/>
+  </xs:complexType>
+  <xs:complexType name="copy_body">
+    <xs:sequence>
+      <xs:element ref="source"/>
+      <xs:element ref="destination"/>
+      <xs:element ref="stop_on_fail"/>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="source" type="xs:string"/>
+  <xs:element name="destination" type="xs:string"/>
+  <xs:element name="stop_on_fail" type="xs:boolean"/>
+  <xs:element name="run">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" ref="start_time"/>
+        <xs:element minOccurs="0" ref="stop_time"/>
+        <xs:element ref="command"/>
+        <xs:element ref="arguments"/>
+        <xs:element ref="timeout"/>
+        <xs:element ref="expected_return_code"/>
+        <xs:element ref="expected_output"/>
+        <xs:element ref="stop_on_fail"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="command" type="xs:string"/>
+  <xs:element name="arguments" type="xs:string"/>
+  <xs:element name="timeout" type="xs:integer"/>
+  <xs:element name="expected_return_code" type="xs:integer"/>
+  <xs:element name="expected_output" type="xs:string"/>
+  <xs:element name="step" abstract="true"/>
+  <xs:element name="synchronize" substitutionGroup="step">
+    <xs:complexType/>
+  </xs:element>
+  <xs:element name="run-task" substitutionGroup="step" type="xs:string"/>
+  <xs:element name="repeat" substitutionGroup="step" type="xs:string"/>
+  <xs:element name="start_time" abstract="true"/>
+  <xs:element name="start_absolute" substitutionGroup="start_time" type="xs:dateTime"/>
+  <xs:element name="start_relative" substitutionGroup="start_time" type="xs:duration"/>
+  <xs:element name="stop_time" abstract="true"/>
+  <xs:element name="stop_absolute" substitutionGroup="stop_time" type="xs:dateTime"/>
+  <xs:element name="stop_relative" substitutionGroup="stop_time" type="xs:duration"/>
+</xs:schema>
