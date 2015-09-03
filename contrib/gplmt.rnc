@@ -11,7 +11,7 @@ experiment = element experiment {
 
   targets?,
 
-  element tasks { task* }?,
+  element tasklists { tasklist* }?,
 
   element steps { step* }
 }
@@ -70,7 +70,6 @@ run = element run {
   start_time?,
   stop_time?,
   element command { text },
-  element arguments { text },
   element timeout { xsd:integer },
   element expected_return_code { xsd:integer },
   element expected_output { text },
@@ -79,8 +78,22 @@ run = element run {
 
 step =
   element synchronize { empty } |
-  element run-task { text } |
-  element repeat { text }
+  element start-tasklist {
+    attribute targets { text },
+    # reference a tasklist
+    (
+      attribute ref { text },
+      attribute resume-task { text }
+    ) |
+    # tasklists can be defined inline
+    task*
+  } |
+  element repeat {
+    attribute iterations { xsd:integer }?,
+    attribute until { xsd:dateTime }?,
+    attribute during { xsd:duration }?,
+    step
+  }
 
 start_time =
  element start_absolute { xsd:dateTime } |
