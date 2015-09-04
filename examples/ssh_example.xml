@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>SSH example</description>
+
+  <target name="sam" type="ssh">
+    <user>dold</user>
+    <host>sam.net.in.tum.de</host>
+  </target>
+
+  <target name="local" type="local" />
+
+  <steps>
+    <start-tasklist targets="sam">
+      <run>
+        <command>echo "I Hello"</command>
+      </run>
+      <run>
+        <command>uname -a</command>
+      </run>
+    </start-tasklist>
+  </steps>
+</experiment>

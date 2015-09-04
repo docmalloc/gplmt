@@ -19,15 +19,28 @@
 
 
 import argparse
+import asyncio
 import sys
+import lxml.etree
 from lxml.etree import parse
-from gplmtlib import process_includes, Workers
+from gplmtlib import process_includes, Testbed
+from copy import deepcopy
+import logging
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "experiment_file", help="experiment description XML file")
+parser.add_argument(
+    "--dry", "-d", help="do a dry run")
+parser.add_argument(
+    "--batch", help="disable all interaction (e.g. password prompts)")
 
 args = parser.parse_args()
+
+logging.basicConfig(
+            format='%(asctime)s %(levelname)s %(message)s',
+        datefmt='%Y-%m-%d %T %Z',
+        level=logging.INFO)
 
 try:
     document = parse(args.experiment_file)
@@ -41,11 +54,11 @@ if root.tag != "experiment":
     print("Fatal: Root element must be 'experiment', not '%s'" % (root.tag,))
     sys.exit(1)
 
-process_includes(root)
+process_includes(document)
 
-targets = root.find('targets')
+targets = document.findall('/target')
 
-scheduler = Scheduler(targets)
+testbed = Testbed(targets, dry=args.dry)
 
 steps = root.find("steps")
 
@@ -53,28 +66,64 @@ if steps is None:
     print("Warning: Nothing to do (no steps defined)")
     sys.exit(2)
 
+named_tasklists = {}
+
+for x in document.xpath("/experiment/tasklist[@name]"):
+    named_tasklists[x.get('name')] = x
+
+def resolve_tasklist(el):
+    refname = el.get('ref')
+    if refname is not None:
+        tl = named_tasklists.get(refname)
+        if tl is None:
+            raise Exception("tasklist '%s' not found" % (refname,))
+    else:
+        tl = lxml.etree.Element('tasklist')
+        tl.extend(deepcopy(list(el)))
+    return tl
+    
+
 def run_steps(steps):
     for child in steps:
         if child.tag == "synchronize":
-            workers.join()
+            testbed.join_all()
             continue
         if child.tag == "repeat":
-            print("Warning: Repeat not implemented, skipping")
+            logging.warn("Repeat not implemented, skipping")
             continue
         if child.tag == "start-tasklist":
             targets_def = child.get("targets")
             if targets_def is None:
-                print("Warning: start-tasklist has no targets, skipping")
+                logging.warn("start-tasklist has no targets, skipping")
                 continue
             targets = targets_def.split(" \t,")
-            # TODO: acquire task list
-            task = ...
+            tasklist = resolve_tasklist(child)
             for target in targets:
-                scheduler.schedule(target, task)
+                testbed.schedule(target, tasklist)
             continue
-        print("Fatal: Unexpected step '%s'" % (child.tag,))
-    workers.join()
+        if child.tag == "loop-counted":
+            num_iter_attr = child.get("iterations")
+            if num_iter_attr is None:
+                logging.error("counted loop is missing attribute iterations, skipping")
+                continue
+            try:
+                num_iter = int(num_iter_attr)
+            except ValueError:
+                logging.error("counted loop has malformed attribute iterations (%s), skipping", num_iter_attr)
+                continue
+            logging.info("Starting counted loop")
+            for x in range(num_iter):
+                run_steps(list(child))
+                testbed.join_all()
+            logging.info("Done with counted loop")
+            continue
+        logging.error("Unexpected step '%s'", child.tag)
+    testbed.join_all()
 
 run_steps(steps)
+
+# Necessary due to http://bugs.python.org/issue23548
+loop = asyncio.get_event_loop()
+loop.close()
 
 

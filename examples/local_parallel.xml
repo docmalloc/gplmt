@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Demonstration of parallel feature</description>
+
+  <target name="all-loc" type="group">
+    <target name="loc1" type="local" />
+    <target name="loc2" type="local" />
+    <target name="loc3" type="local" />
+  </target>
+
+  <tasklist name="tl">
+    <run>
+      <command>bash -c "echo I am $$ &amp;&amp; sleep 1"</command>
+    </run>
+  </tasklist>
+
+  <steps>
+    <start-tasklist ref="tl" targets="all-loc" />
+  </steps>
+
+</experiment>

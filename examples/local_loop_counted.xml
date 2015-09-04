@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Demonstration of loop feature</description>
+
+  <target name="mynode" type="local" />
+
+  <tasklist name="loopbody">
+    <run>
+      <command>bash -c "echo foo &amp;&amp; sleep 1"</command>
+    </run>
+  </tasklist>
+
+  <steps>
+    <loop-counted iterations="5">
+      <start-tasklist ref="loopbody" targets="mynode" />
+    </loop-counted>
+  </steps>
+
+</experiment>
