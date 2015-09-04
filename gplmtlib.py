@@ -158,8 +158,7 @@ class Testbed:
         target_nodes = self._resolve_target(target_name)
         for node in target_nodes:
             coro = node.run(tasklist)
-            loop = asyncio.get_event_loop()
-            task = loop.create_task(coro)
+            task = asyncio.async(coro)
             self.tasks.append(task)
 
 
@@ -243,8 +242,7 @@ class Node:
             parallel_tasks = []
             for child_task in task:
                 coro = self._run_task(child_task)
-                loop = asyncio.get_event_loop()
-                task = loop.create_task(coro)
+                task = asyncio.async(coro)
                 parallel_tasks.append(task)
             yield from asyncio.wait(parallel_tasks)
             return
