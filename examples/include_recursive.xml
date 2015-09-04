@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Demonstration of recursion detection</description>
+
+  <include file="include_recursive.xml" />
+
+  <include file="include/hello_world.xml" />
+
+
+  <steps>
+    <start-tasklist ref="hello-world" targets="all-loc" />
+  </steps>
+
+</experiment>

@@ -318,8 +318,16 @@ def replace(element, replacement):
     parent.remove(element)
     parent.insert(child_idx, replacement)
 
+def prefix_names(el, prefix):
+    for element in el.iter():
+        if 'name' not in el:
+            continue
+        if element.tag not in ('target', 'tasklist', 'run'):
+            continue
+        element['name'] = prefix + element['name']
 
-def process_includes(doc, parent_filename, env=None):
+
+def process_includes(doc, parent_filename, env=None, memo=None):
     includes = doc.findall('//include')
     for el in includes:
         filename = el.get('file')
@@ -331,11 +339,17 @@ def process_includes(doc, parent_filename, env=None):
         if not os.path.isabs(filename):
             parent_dir = os.path.dirname(os.path.realpath(parent_filename))
             filename = os.path.join(parent_dir, filename)
+        filename = os.path.realpath(filename)
+        if memo is not None and filename in memo:
+            raise ExperimentSyntaxError("recursive include")
         xml_parser = lxml.etree.XMLParser(remove_blank_text=True)
         doc = lxml.etree.parse(filename, parser=xml_parser)
         # XXX: Check that including this element here
         # preserves document validity.
-        # XXX: Handle recursive include processing
         # XXX: Handle namespace prefixing
+        new_memo = {filename}
+        if memo is not None:
+            new_memo.update(memo)
+        process_includes(doc, filename, memo=new_memo)
         replace(el, doc.getroot())
 
