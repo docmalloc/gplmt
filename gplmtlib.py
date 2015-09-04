@@ -321,7 +321,7 @@ def replace(element, replacement):
     parent.insert(child_idx, replacement)
 
 
-def process_includes(doc, env=None):
+def process_includes(doc, parent_filename, env=None):
     includes = doc.findall('//include')
     for el in includes:
         filename = el.get('file')
@@ -329,6 +329,10 @@ def process_includes(doc, env=None):
             raise ExperimentSyntaxError("Filename missing in include")
         # XXX: Implement defaulting, shell style.
         filename = os.path.expandvars(filename)
+        # Search relative paths relative to parent document
+        if not os.path.isabs(filename):
+            parent_dir = os.path.dirname(os.path.realpath(parent_filename))
+            filename = os.path.join(parent_dir, filename)
         xml_parser = lxml.etree.XMLParser(remove_blank_text=True)
         doc = lxml.etree.parse(filename, parser=xml_parser)
         # XXX: Check that including this element here

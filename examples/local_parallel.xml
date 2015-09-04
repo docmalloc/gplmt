@@ -6,12 +6,19 @@
   <target name="all-loc" type="group">
     <target name="loc1" type="local" />
     <target name="loc2" type="local" />
-    <target name="loc3" type="local" />
   </target>
 
   <tasklist name="tl">
+    <parallel>
+      <run>
+        <command>bash -c "echo I am FOO $$ &amp;&amp; sleep 1"</command>
+      </run>
+      <run>
+        <command>bash -c "echo I am BAR $$ &amp;&amp; sleep 1"</command>
+      </run>
+    </parallel>
     <run>
-      <command>bash -c "echo I am $$ &amp;&amp; sleep 1"</command>
+      <command>bash -c "echo END $$ &amp;&amp; sleep 1"</command>
     </run>
   </tasklist>
 

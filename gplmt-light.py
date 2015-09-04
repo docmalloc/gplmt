@@ -54,7 +54,7 @@ if root.tag != "experiment":
     print("Fatal: Root element must be 'experiment', not '%s'" % (root.tag,))
     sys.exit(1)
 
-process_includes(document)
+process_includes(document, parent_filename=args.experiment_file)
 
 targets = document.findall('/target')
 

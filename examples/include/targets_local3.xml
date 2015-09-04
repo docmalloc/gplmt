@@ -1,0 +1,5 @@
+<target name="all-loc" type="group">
+  <target name="loc1" type="local" />
+  <target name="loc2" type="local" />
+  <target name="loc3" type="local" />
+</target>
