@@ -29,6 +29,14 @@ from concurrent.futures import FIRST_COMPLETED
 import shlex
 import isodate
 
+__all__ = [
+    "Testbed",
+    "ExperimentExecutionError",
+    "ExperimentSyntaxError",
+    "process_includes",
+    "ensure_names",
+]
+
 
 class Testbed:
     # XXX: maybe pass args object instead of single params
@@ -79,7 +87,10 @@ class Testbed:
             logging.info("Synchronized nodes (no tasks)")
             return
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.wait(self.tasks))
+        done, pending = loop.run_until_complete(asyncio.wait(self.tasks))
+        for task in done:
+            # throw potential exceptions
+            task.result()
         logging.info("Synchronized nodes")
 
     def join_one(self):
@@ -168,7 +179,7 @@ class Testbed:
 
         members = []
         for num, hostname in enumerate(node_hostnames):
-            name = "_pl_" + groupname + "." + str(num)
+            name = "_pl_" + slicename + "." + str(num)
             cfg = E.target({"type":"ssh", "name":name},
                     E.host(hostname), E.user(slicename))
             self.nodes[name] = SSHNode(cfg, testbed=self)
@@ -256,8 +267,9 @@ class Node:
         except asyncio.TimeoutError:
             # XXX: be more verbose!
             logging.warning(
-                    "Task %s timed out",
-                    task_xml.get('name', '(unknown)'))
+                    "Task %s on node %s timed out",
+                    task_xml.get('name', '(unknown)'),
+                    self.name)
 
     @asyncio.coroutine
     def _run_task_run(self, task, testbed):
@@ -341,7 +353,9 @@ class Node:
                 coro = self._run_task(child_task)
                 task = asyncio.async(coro)
                 parallel_tasks.append(task)
-            yield from asyncio.wait(parallel_tasks)
+            done, pending = yield from asyncio.wait(parallel_tasks)
+            for task in done:
+                task.result()
             return
 
 
@@ -429,14 +443,13 @@ class SSHNode(Node):
         argv.extend(['--', scp_source, scp_destination])
         logging.info("SCP command '%s'", repr(argv))
         proc = yield from asyncio.create_subprocess_exec(*argv)
-        yield from proc.wait()
+        ret = yield from proc.wait()
         self.testbed.ssh_release()
+        if ret != 0:
+            raise ExperimentExecutionError("Copy from '%s' to '%s' failed" % (scp_source, scp_destination))
 
     @asyncio.coroutine
     def put(self, source, destination):
-        if not os.path.exists(source):
-            logging.error("Source file %s does not exist", source)
-            return
         if os.path.isabs(source):
             scp_source = source
         else:
@@ -456,6 +469,11 @@ class SSHNode(Node):
 
 class ExperimentSyntaxError(Exception):
     pass
+
+
+class ExperimentExecutionError(Exception):
+    def __init__(self, message):
+        self.message = message
 
 
 def replace(element, replacement):

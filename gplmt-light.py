@@ -23,7 +23,7 @@ import asyncio
 import sys
 import lxml.etree
 from lxml.etree import parse
-from gplmtlib import process_includes, ensure_names, Testbed
+from gplmtlib import *
 from copy import deepcopy
 import logging
 
@@ -137,10 +137,14 @@ def run_steps(steps):
         logging.error("Unexpected step '%s'", child.tag)
     testbed.join_all()
 
-run_steps(steps)
+try:
+    run_steps(steps)
+except ExperimentExecutionError as e:
+    logging.error("Aborting experiment:  %s" % (e.message))
 
 # Necessary due to http://bugs.python.org/issue23548
 loop = asyncio.get_event_loop()
 loop.close()
 
+logging.info("Experiment finished")
 
