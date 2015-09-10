@@ -4,21 +4,16 @@
   <description>PlanetLab example, shows node information</description>
 
   <target name="pl-dold" type="planetlab">
-      <apiurl>https://www.planet-lab.eu/PLCAPI/</apiurl>
-      <run>
-        <command>echo "I Hello"</command>
-      </run>
+    <apiurl>https://www.planet-lab.eu/PLCAPI/</apiurl>
     <slicename>tumple_gnunet_deployment</slicename>
     <user>dold@in.tum.de</user>
   </target>
 
   <steps>
     <start-tasklist targets="pl-dold">
-      <run>
-        <command>echo "I Hello"</command>
-      </run>
-      <run>
-        <command>uname -a</command>
+      <run name="disk_space">
+        <end_relative>PT30S</end_relative>
+        <command>hostname; df -h</command>
       </run>
     </start-tasklist>
   </steps>

@@ -23,7 +23,7 @@ import asyncio
 import sys
 import lxml.etree
 from lxml.etree import parse
-from gplmtlib import process_includes, Testbed
+from gplmtlib import process_includes, ensure_names, Testbed
 from copy import deepcopy
 import logging
 
@@ -34,6 +34,16 @@ parser.add_argument(
     "--dry", "-d", help="do a dry run")
 parser.add_argument(
     "--batch", help="disable all interaction (e.g. password prompts)")
+parser.add_argument(
+    "--logroot-dir", help="Root directory for logs, will be created if necessary")
+parser.add_argument(
+    "--ssh-cooldown",
+    default=1.0,
+    help="Number of seconds to wait between ssh connections")
+parser.add_argument(
+    "--ssh-parallelism",
+    default=30,
+    help="Maximum number of concurrently opened ssh connections")
 
 args = parser.parse_args()
 
@@ -55,10 +65,17 @@ if root.tag != "experiment":
     sys.exit(1)
 
 process_includes(document, parent_filename=args.experiment_file)
+ensure_names(document)
 
 targets = document.findall('/target')
 
-testbed = Testbed(targets, dry=args.dry)
+testbed = Testbed(
+        targets,
+        batch=args.batch,
+        dry=args.dry,
+        logroot_dir=args.logroot_dir,
+        ssh_parallelism=args.ssh_parallelism,
+        ssh_cooldown=args.ssh_cooldown)
 
 steps = root.find("steps")
 

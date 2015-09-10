@@ -26,18 +26,53 @@ import signal
 import getpass
 import xmlrpc.client
 from concurrent.futures import FIRST_COMPLETED
+import shlex
+import isodate
 
-
-signal.signal(signal.SIGCHLD, signal.SIG_DFL)
 
 class Testbed:
-    def __init__(self, targets_xml,dry=False):
+    # XXX: maybe pass args object instead of single params
+    def __init__(
+            self,
+            targets_xml,
+            dry,
+            batch,
+            logroot_dir,
+            ssh_cooldown,
+            ssh_parallelism):
+        self.batch = batch
+        self.ssh_cooldown = ssh_cooldown
+        self.logroot_dir = logroot_dir
         self.nodes = {}
         self.groups = {}
         for el in targets_xml:
             self._process_declaration(el)
 
         self.tasks = []
+
+        # counter for sequential numbering of task runs
+        self.run_counter = 0
+
+        self.ssh_cooldown_lock = asyncio.Lock()
+        self.ssh_parallel_sema = asyncio.Semaphore(ssh_parallelism)
+
+    @asyncio.coroutine
+    def ssh_acquire(self):
+        yield from self.ssh_parallel_sema.acquire()
+        if self.ssh_cooldown is not None:
+            yield from self.ssh_cooldown_lock.acquire()
+            # as soon as we get the lock,
+            # we schedule a function that releases it
+            # after the cooldown period.
+            loop = asyncio.get_event_loop()
+            loop.call_later(
+                    self.ssh_cooldown,
+                    lambda: self.ssh_cooldown_lock.release())
+
+    def ssh_release(self):
+        # Note that the cooldown lock will
+        # be released by a timer.
+        self.ssh_parallel_sema.release()
 
     def join_all(self):
         if not len(self.tasks):
@@ -78,10 +113,10 @@ class Testbed:
         if tp is None:
             raise Exception("target needs type")
         if tp == 'local':
-            self.nodes[name] = LocalNode(el)
+            self.nodes[name] = LocalNode(el, testbed=self)
             return
         if tp == 'ssh':
-            self.nodes[name] = SSHNode(el)
+            self.nodes[name] = SSHNode(el, testbed=self)
             return
         if tp == 'group':
             self._process_group(el)
@@ -117,6 +152,8 @@ class Testbed:
         auth['AuthString'] = pw
         auth['AuthMethod'] = "password"
 
+        logging.info("Making RPC call to planetlab")
+
         try:
             node_ids = server.GetSlices(auth, [slicename], ['node_ids'])[0]['node_ids']
 
@@ -127,11 +164,14 @@ class Testbed:
             # XXX: Propagate the error
             return
 
+        logging.info("Got response from planetlab")
+
         members = []
         for num, hostname in enumerate(node_hostnames):
-            cfg = E.target({"type":"ssh"})
-            name = "_pl." + groupname + "." + str(num)
-            self.nodes[name] = SSHNode(cfg)
+            name = "_pl_" + groupname + "." + str(num)
+            cfg = E.target({"type":"ssh", "name":name},
+                    E.host(hostname), E.user(slicename))
+            self.nodes[name] = SSHNode(cfg, testbed=self)
             members.append(name)
         self.groups[groupname] = members
 
@@ -157,7 +197,7 @@ class Testbed:
         print("resolving target", target_name)
         target_nodes = self._resolve_target(target_name)
         for node in target_nodes:
-            coro = node.run(tasklist)
+            coro = node.run(tasklist, self)
             task = asyncio.async(coro)
             self.tasks.append(task)
 
@@ -169,58 +209,115 @@ def find_text(node, query):
     return res.text
 
 
+def get_delay(node, prefix):
+    t_relative = node.find(prefix + '_relative')
+    if t_relative is not None:
+        return isodate.parse_duration(t_relative.text).total_seconds()
+    t_absolute = node.find(prefix + '_absolute')
+    if t_absolute is not None:
+        st = isodate.parse_datetime(t_absolute.text)
+        diff = st - datetime.datetime.now()
+        return diff.total_seconds()
+    return None
+
+
 class Node:
+    def __init__(self, node_xml, testbed):
+        self.testbed = testbed
+        self.name = node_xml.get('name')
+
     @asyncio.coroutine
-    def run(self, tasklist):
+    def run(self, tasklist, testbed):
         self.list_name = tasklist.get('name', '(unnamed)')
         logging.info("running tasklist '%s'", self.list_name)
         for task in tasklist:
-            yield from self._run_task(task)
+            yield from self._run_task(task, testbed)
 
     @asyncio.coroutine
     def _sleep_until_ready(self, task):
-        # XXX: Implement
-        pass
+        delay = get_delay(task, 'start')
+        if delay is not None and delay > 0:
+            logging.info(
+                    "Sleeping for %s seconds for task %s.",
+                    delay,
+                    task.get('name'))
+            yield from asyncio.sleep(delay)
 
     @asyncio.coroutine
     def _run_until_timeout(self, coro, task_xml):
-        # XXX: Implement
-        yield from asyncio.async(coro)
+        # XXX: what about the task timeout?
+        # We should handle that in addition to the *_end stuff
+        delay = get_delay(task_xml, 'end')
+        try:
+            logging.info(
+                    "Running task %s with delay of %s.",
+                    task_xml.get('name'), delay)
+            yield from asyncio.wait_for(asyncio.async(coro), delay)
+        except asyncio.TimeoutError:
+            # XXX: be more verbose!
+            logging.warning(
+                    "Task %s timed out",
+                    task_xml.get('name', '(unknown)'))
 
     @asyncio.coroutine
-    def _run_task(self, task):
+    def _run_task_run(self, task, testbed):
+        command_el = task.find('command')
+        task_name = task.get('name')
+        if command_el is None:
+            logging.warn(
+                    "Task %s from list %s is of type 'run', but has no command",
+                    name, self.list_name)
+            return
+        command = command_el.text
+        expected_ret_el = task.find('expected_return_code')
+        if expected_ret_el is None:
+            expected_return_code = None
+        else:
+            try:
+                expected_ret = int(expected_ret_el.text)
+            except ValueError:
+                expected_ret = None
+                logging.error("Invalid number '%s'",
+                        expected_ret_el.text)
+        expected_output_el = task.find('expected_output')
+        if expected_output_el is None:
+            expected_output = None
+        else:
+            expected_output = expected_output_el.text
+
+
+        if testbed.logroot_dir is not None:
+            dir = os.path.join(testbed.logroot_dir, self.name)
+            os.makedirs(dir, exist_ok=True)
+
+            errfilename = os.path.join(
+                    dir,
+                    "%s.%s.err" % (task_name, testbed.run_counter))
+            outfilename = os.path.join(
+                    dir,
+                    "%s.%s.out" % (task_name, testbed.run_counter))
+
+            with open(errfilename, 'w') as err, open(outfilename, 'w') as out:
+                coro = self.execute(command,
+                        expected_return_code, expected_output,
+                        stdout=out, stderr=err)
+                yield from self._run_until_timeout(coro, task)
+        else:
+            coro = self.execute(command,
+                    expected_return_code, expected_output,
+                    stdout=None, stderr=None)
+            yield from self._run_until_timeout(coro, task)
+
+
+    @asyncio.coroutine
+    def _run_task(self, task, testbed):
         name = task.get('name', '(unnamed-task)')
         if task.get('enabled', 'true').lower() == 'false':
             logging.info("Task %s disabled", name)
             return
         yield from self._sleep_until_ready(task)
         if task.tag == 'run':
-            command_el = task.find('command')
-            if command_el is None:
-                logging.warn(
-                        "Task %s from list %s is of type 'run', but has no command",
-                        name, self.list_name)
-                return
-            command = command_el.text
-            expected_ret_el = task.find('expected_return_code')
-            if expected_ret_el is None:
-                expected_return_code = None
-            else:
-                try:
-                    expected_ret = int(expected_ret_el.text)
-                except ValueError:
-                    expected_ret = None
-                    logging.error("Invalid number '%s'",
-                            expected_ret_el.text)
-            expected_output_el = task.find('expected_output')
-            if expected_output_el is None:
-                expected_output = None
-            else:
-                expected_output = expected_output_el.text
-            coro = self.execute(command,
-                    expected_return_code, expected_output)
-
-            yield from self._run_until_timeout(coro, task)
+            yield from self._run_task_run(task, testbed)
             return
         if task.tag == 'get':
             source = find_text(task, 'source')
@@ -236,7 +333,7 @@ class Node:
             return
         if task.tag == 'sequence':
             for child_task in task:
-                self._run_task(child_task)
+                yield from self._run_task(child_task)
             return
         if task.tag == 'parallel':
             parallel_tasks = []
@@ -249,14 +346,18 @@ class Node:
 
 
 class LocalNode(Node):
-    def __init__(self, node_xml):
-        pass
+    def __init__(self, node_xml, testbed):
+        super().__init__(node_xml, testbed)
 
     @asyncio.coroutine
-    def execute(self, command, expected_ret, expected_out):
+    def execute(
+            self, command,
+            expected_ret, expected_out,
+            stdout, stderr):
         logging.info("Executing command '%s'", command)
-        proc = yield from asyncio.create_subprocess_shell(command)
-        yield from proc.wait()
+        proc = yield from asyncio.create_subprocess_shell(
+                command, stdout=stdout, stderr=stderr)
+        ret = yield from proc.wait()
 
     @asyncio.coroutine
     def put(self, source, destination):
@@ -268,7 +369,10 @@ class LocalNode(Node):
 
 
 class SSHNode(Node):
-    def __init__(self, node_xml):
+    def __init__(self, node_xml, testbed):
+        super().__init__(node_xml, testbed)
+        if self.name is None:
+            raise ExperimentSyntaxError("Node name must be given")
         self.host = find_text(node_xml, 'host')
         if self.host is None:
             raise ExperimentSyntaxError("SSH target requires host")
@@ -276,29 +380,78 @@ class SSHNode(Node):
         if self.user is None:
             raise ExperimentSyntaxError("SSH target requires user")
         self.port = find_text(node_xml, 'port')
+        extra = find_text(node_xml, 'extra-args')
+        if extra is None:
+            self.extra = []
+        else:
+            self.extra = shlex.split(extra)
+
         if self.port is None:
             self.port = 22
-            self.portstr = ""
-        else:
-            self.portstr = "-p %s" % (self.port,)
         self.target = "%s@%s" % (self.user, self.host)
 
     @asyncio.coroutine
-    def execute(self, command, expected_ret, expected_out):
+    def execute(
+            self,
+            command, expected_ret, expected_out,
+            stdout, stderr):
+        yield from self.testbed.ssh_acquire()
+
         logging.info("Executing command '%s'", command)
-        ssh_cmd = ("ssh -o StrictHostKeyChecking=no %s %s -- %s" % (
-            self.portstr, self.target, command))
-        logging.debug("SSH command '%s'", ssh_cmd)
-        proc = yield from asyncio.create_subprocess_shell(ssh_cmd)
+        argv = ['ssh']
+        # XXX: make optional
+        argv.extend(['-o', 'StrictHostKeyChecking=no'])
+        # XXX: make optional
+        argv.extend(['-o', 'BatchMode=yes'])
+        argv.extend(['-p', str(self.port)])
+        argv.extend(self.extra)
+        argv.extend([self.target])
+        argv.extend(['--', command])
+        logging.info("SSH command '%s'", repr(argv))
+        proc = yield from asyncio.create_subprocess_exec(
+                *argv,
+                stdout=stdout, stderr=stderr)
         yield from proc.wait()
+        logging.info("SSH command terminated")
+
+        self.testbed.ssh_release()
+
+    @asyncio.coroutine
+    def scp_copy(self, scp_source, scp_destination):
+        yield from self.testbed.ssh_acquire()
+        argv = ['scp']
+        # XXX: make optional
+        argv.extend(['-o', 'StrictHostKeyChecking=no'])
+        # XXX: make optional
+        argv.extend(['-o', 'BatchMode=yes'])
+        argv.extend(['-P', str(self.port)])
+        argv.extend(self.extra)
+        argv.extend(['--', scp_source, scp_destination])
+        logging.info("SCP command '%s'", repr(argv))
+        proc = yield from asyncio.create_subprocess_exec(*argv)
+        yield from proc.wait()
+        self.testbed.ssh_release()
 
     @asyncio.coroutine
     def put(self, source, destination):
-        logging.warn("Task type 'put' not available for local nodes, ignoring.")
+        if not os.path.exists(source):
+            logging.error("Source file %s does not exist", source)
+            return
+        if os.path.isabs(source):
+            scp_source = source
+        else:
+            scp_source = './' + source
+        scp_destination = '%s:%s' % (self.target, destination)
+        yield from self.scp_copy(scp_source, scp_destination)
         
     @asyncio.coroutine
     def get(self, source, destination):
-        logging.warn("Task type 'get' not available for local nodes, ignoring.")
+        scp_source = '%s:%s' % (self.target, source)
+        if os.path.isabs(source):
+            scp_destination = destination
+        else:
+            scp_destination = './' + destination
+        yield from self.scp_copy(scp_source, scp_destination)
 
 
 class ExperimentSyntaxError(Exception):
@@ -318,6 +471,7 @@ def replace(element, replacement):
     parent.remove(element)
     parent.insert(child_idx, replacement)
 
+
 def prefix_names(el, prefix):
     for element in el.iter():
         if 'name' not in el:
@@ -325,6 +479,20 @@ def prefix_names(el, prefix):
         if element.tag not in ('target', 'tasklist', 'run'):
             continue
         element['name'] = prefix + element['name']
+
+
+def ensure_names(el):
+    """Make sure that every interesting
+    element has a name"""
+    counter = 0
+    for element in el.iter():
+        if element.tag not in ('run',):
+            continue
+        if element.get('name') is None:
+            # XXX: maybe we could use filename/line?
+            # We do have .sourceline available sometimes
+            element.set('name', '_anon' + str(counter))
+            counter += 1
 
 
 def process_includes(doc, parent_filename, env=None, memo=None):

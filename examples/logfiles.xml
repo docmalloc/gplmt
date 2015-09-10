@@ -12,11 +12,8 @@
 
   <steps>
     <start-tasklist targets="sam">
-      <run name="first_echo">
-        <command>echo "I Hello"</command>
-      </run>
       <run>
-        <command>uname -a</command>
+        <command>echo "I Hello"</command>
       </run>
       <run>
         <command>uname -a</command>
