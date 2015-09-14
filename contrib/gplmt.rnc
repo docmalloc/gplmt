@@ -7,19 +7,11 @@ start = experiment | targets | tasklist
 experiment = element experiment {
   element description { text }?,
 
-  options,
+  target*,
 
-  targets?,
-
-  element tasklists { tasklist* }?,
+  tasklist*,
 
   element steps { step* }
-}
-
-targets = element targets { target* }
-
-options = element options {
-  text
 }
 
 \include = element include {

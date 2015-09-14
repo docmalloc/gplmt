@@ -1,6 +1,0 @@
-host1.example.com
-host2.example.com:222
-user@host1.example.com
-user@host1.example.com:222
-user:pass@host3.example.com:222
-
