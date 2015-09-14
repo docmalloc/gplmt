@@ -64,18 +64,23 @@ if root.tag != "experiment":
     print("Fatal: Root element must be 'experiment', not '%s'" % (root.tag,))
     sys.exit(1)
 
+# XXX: this should be done by the library
 process_includes(document, parent_filename=args.experiment_file)
 ensure_names(document)
 
 targets = document.findall('/target')
 
-testbed = Testbed(
-        targets,
-        batch=args.batch,
-        dry=args.dry,
-        logroot_dir=args.logroot_dir,
-        ssh_parallelism=args.ssh_parallelism,
-        ssh_cooldown=args.ssh_cooldown)
+try:
+    testbed = Testbed(
+            targets,
+            batch=args.batch,
+            dry=args.dry,
+            logroot_dir=args.logroot_dir,
+            ssh_parallelism=args.ssh_parallelism,
+            ssh_cooldown=args.ssh_cooldown)
+except ExperimentExecutionError as e:
+    logging.error("Not running experiment:  %s" % (e.message))
+    sys.exit(1)
 
 steps = root.find("steps")
 

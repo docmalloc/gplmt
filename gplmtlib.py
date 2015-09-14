@@ -17,17 +17,17 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import os.path
-import lxml.etree
-from lxml.builder import E
 import asyncio
-import logging
-import signal
 import getpass
+import isodate
+import logging
+import lxml.etree
+import os.path
+import shlex
+import signal
 import xmlrpc.client
 from concurrent.futures import FIRST_COMPLETED
-import shlex
-import isodate
+from lxml.builder import E
 
 __all__ = [
     "Testbed",
@@ -114,7 +114,6 @@ class Testbed:
             members.append(name)
             self._process_declaration(el)
         self.groups[els.get('name')] = members
-    
 
     def _process_declaration(self, el):
         name = el.get('name')
@@ -170,10 +169,7 @@ class Testbed:
 
             node_hostnames = [node['hostname'] for node in server.GetNodes(auth, node_ids, ['hostname'])]
         except Exception as e:
-            # XXX: Catch specific exceptions
-            logging.error("Planetlab API call failed, not adding nodes", exc_info=True)
-            # XXX: Propagate the error
-            return
+            raise ExperimentExecutionError("PlanetLab API call failed")
 
         logging.info("Got response from planetlab")
 
@@ -185,7 +181,6 @@ class Testbed:
             self.nodes[name] = SSHNode(cfg, testbed=self)
             members.append(name)
         self.groups[groupname] = members
-
 
     def _resolve_target(self, target_name):
         target_nodes = []
