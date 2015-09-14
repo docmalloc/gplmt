@@ -1,27 +1,14 @@
-   Welcome to GNUnet Parallel Largescale Management Tool (gplmt)
-
-
-What is GNUnet Parallel Largescale Management Tool?
+What is GPLMT?
 ===============
 
-GNUnet is peer-to-peer framework focusing on security. We use GPLMT to 
-deploy, manage and administer GNUnet on a large number of remote nodes 
-parallel.
+XXX: update
 
-Additional information and documentation about gplmt can be found at
-https://gnunet.org/gplmt .
+Documentation:
+==============
 
-Contact & Bugs:
-=============
+The latest version of the documentation is available from 
+[readthedocs](http://gplmt.readthedocs.org/en/latest/).
 
-Please check for contact information:
-https://gnunet.org/contact_information
-
-If you should find any bugs please contact:
-wachs@net.in.tum.de
-
-or even better submit them directly under
-https://gnunet.org/bugs
 
 Features:
 =============
