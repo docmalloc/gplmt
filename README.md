@@ -40,10 +40,13 @@ gplmt/
 source code
 
 contrib/
-example configuration files, tasklists and tasklist XML schema
+schema for experiment definition language and other miscellaneous files
 
 docs/
 documentation file, e.g. user guide
+
+examples/
+example experiment definitions
 
 
 Dependencies:
@@ -51,8 +54,9 @@ Dependencies:
 
 These are the direct dependencies for running gplmt:
 
-- Python		>= 3.4
-- Paramiko		>= 1.7
+- Python >= 3.4
+- lxml >= 3.4.4
+- isodate >= 0.5.4
 
 The version numbers represent the versions we used to develop gplmt.
 
@@ -77,13 +81,9 @@ lxml >= 3.4.4
 On GNU/Linux use: sudo pip3 install lxml
 Or check https://pypi.python.org/pypi/lxml
 
-Paramiko (Bluehorn fork)
+isodate >= 0.5.4
 --------
 
-Due to a bug in the original paramiko please use the bluehorn fork:
-Check out: https://github.com/Bluehorn/paramiko
+On GNU/Linux use: sudo pip3 install isodate
+Or check https://pypi.python.org/pypi/isodate
 
-Usage
-===============
-
-Please have a look at the GPLMT user guide in docs/gplmt-userguide.pdf
