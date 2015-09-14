@@ -176,7 +176,8 @@ class Testbed:
         members = []
         for num, hostname in enumerate(node_hostnames):
             name = "_pl_" + slicename + "." + str(num)
-            cfg = E.target({"type":"ssh", "name":name},
+            cfg = E.target(
+                    {"type": "ssh", "name": name},
                     E.host(hostname), E.user(slicename))
             self.nodes[name] = SSHNode(cfg, testbed=self)
             members.append(name)
@@ -196,7 +197,6 @@ class Testbed:
                 raise Exception("Unknown target %s" % (n,))
 
         return target_nodes
-
 
     def schedule(self, target_name, tasklist):
         print("groups", self.groups)
@@ -284,14 +284,14 @@ class Node:
                 expected_ret = int(expected_ret_el.text)
             except ValueError:
                 expected_ret = None
-                logging.error("Invalid number '%s'",
+                logging.error(
+                        "Invalid number '%s'",
                         expected_ret_el.text)
         expected_output_el = task.find('expected_output')
         if expected_output_el is None:
             expected_output = None
         else:
             expected_output = expected_output_el.text
-
 
         if testbed.logroot_dir is not None:
             dir = os.path.join(testbed.logroot_dir, self.name)
@@ -305,16 +305,17 @@ class Node:
                     "%s.%s.out" % (task_name, testbed.run_counter))
 
             with open(errfilename, 'w') as err, open(outfilename, 'w') as out:
-                coro = self.execute(command,
+                coro = self.execute(
+                        command,
                         expected_return_code, expected_output,
                         stdout=out, stderr=err)
                 yield from self._run_until_timeout(coro, task)
         else:
-            coro = self.execute(command,
+            coro = self.execute(
+                    command,
                     expected_return_code, expected_output,
                     stdout=None, stderr=None)
             yield from self._run_until_timeout(coro, task)
-
 
     @asyncio.coroutine
     def _run_task(self, task, testbed):
@@ -371,7 +372,7 @@ class LocalNode(Node):
     @asyncio.coroutine
     def put(self, source, destination):
         logging.warn("Task type 'put' not available for local nodes, ignoring.")
-        
+
     @asyncio.coroutine
     def get(self, source, destination):
         logging.warn("Task type 'get' not available for local nodes, ignoring.")
@@ -451,7 +452,7 @@ class SSHNode(Node):
             scp_source = './' + source
         scp_destination = '%s:%s' % (self.target, destination)
         yield from self.scp_copy(scp_source, scp_destination)
-        
+
     @asyncio.coroutine
     def get(self, source, destination):
         scp_source = '%s:%s' % (self.target, source)
@@ -533,4 +534,3 @@ def process_includes(doc, parent_filename, env=None, memo=None):
             new_memo.update(memo)
         process_includes(doc, filename, memo=new_memo)
         replace(el, doc.getroot())
-

@@ -49,8 +49,8 @@ args = parser.parse_args()
 
 logging.basicConfig(
             format='%(asctime)s %(levelname)s %(message)s',
-        datefmt='%Y-%m-%d %T %Z',
-        level=logging.INFO)
+            datefmt='%Y-%m-%d %T %Z',
+            level=logging.INFO)
 
 try:
     document = parse(args.experiment_file)
@@ -93,6 +93,7 @@ named_tasklists = {}
 for x in document.xpath("/experiment/tasklist[@name]"):
     named_tasklists[x.get('name')] = x
 
+
 def resolve_tasklist(el):
     refname = el.get('ref')
     if refname is not None:
@@ -103,7 +104,7 @@ def resolve_tasklist(el):
         tl = lxml.etree.Element('tasklist')
         tl.extend(deepcopy(list(el)))
     return tl
-    
+
 
 def run_steps(steps):
     for child in steps:
@@ -152,4 +153,3 @@ loop = asyncio.get_event_loop()
 loop.close()
 
 logging.info("Experiment finished")
-
