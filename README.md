@@ -47,6 +47,13 @@ These are the direct dependencies for running gplmt:
 
 The version numbers represent the versions we used to develop gplmt.
 
+Coding Style:
+=============
+
+PEP8 with 120 character limit.
+
+    pep8 --max-line-length=120
+
 
 How to install?
 ===============
