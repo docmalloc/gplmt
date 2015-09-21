@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>SSH example</description>
+
+  <targets>
+    <target name="local" type="local" />
+  </targets>
+
+  <tasklists>
+    <tasklist name="hello-world">
+      <run>echo Hello World</run>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <step tasklist="hello-world" targets="local" />
+  </steps>
+</experiment>
