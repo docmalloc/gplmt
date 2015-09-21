@@ -28,6 +28,7 @@ import signal
 import xmlrpc.client
 from concurrent.futures import FIRST_COMPLETED
 from lxml.builder import E
+from contextlib import contextmanager
 
 __all__ = [
     "Testbed",
@@ -198,12 +199,12 @@ class Testbed:
 
         return target_nodes
 
-    def schedule(self, target_name, tasklist):
+    def schedule(self, target_name, tasklist_xml, tasklists_env):
         print("groups", self.groups)
         print("resolving target", target_name)
         target_nodes = self._resolve_target(target_name)
         for node in target_nodes:
-            coro = node.run(tasklist, self)
+            coro = node.run(tasklist_xml, self, tasklists_env)
             task = asyncio.async(coro)
             self.tasks.append(task)
 
@@ -227,17 +228,99 @@ def get_delay(node, prefix):
     return None
 
 
+
+class RunTaskPolicy:
+    def __init__(self, node, run_xml):
+        self.node = node
+        self.command = run_xml.text
+        task_name = run_xml.get('name')
+        expected_status_el = run_xml.get('expect-status')
+        if expected_status_el is None:
+            self.expected_status = None
+        else:
+            try:
+                self.expected_status = int(expected_status_el.text)
+            except ValueError:
+                expected_status = None
+                logging.error(
+                        "Invalid number '%s'",
+                        expected_status_el.text)
+
+    def _mklogdir(self):
+        dir = os.path.join(self.node.testbed.logroot_dir, self.node.name)
+        os.makedirs(dir, exist_ok=True)
+        return dir
+
+    @contextmanager
+    def open_stdout(self):
+        if self.node.testbed.logroot_dir is None:
+            yield None
+            return
+        outfilename = os.path.join(
+                self._mklogdir(),
+                "%s.%s.out" % (task_name, self.node.testbed.run_counter))
+        with open(outfilename, "w") as f:
+            yield f
+
+    def check_status(self, status):
+        if self.expected_status is None:
+            return
+        if self.expected_status == status:
+            return
+        # XXX: better error message
+        logging.error("Unexpected status")
+        raise ExperimentExecutionError("Unexpected status")
+
+    @contextmanager
+    def open_stderr(self):
+        if self.node.testbed.logroot_dir is None:
+            yield None
+            return
+        errfilename = os.path.join(
+                self._mklogdir(),
+                "%s.%s.err" % (task_name, self.node.testbed.run_counter))
+        with open(errfilename, "w") as f:
+            yield f
+
+
 class Node:
     def __init__(self, node_xml, testbed):
         self.testbed = testbed
         self.name = node_xml.get('name')
 
     @asyncio.coroutine
-    def run(self, tasklist, testbed):
-        self.list_name = tasklist.get('name', '(unnamed)')
+    def run(self, tasklist_xml, testbed, tasklists_env, memo=None, noclean=False):
+        self.list_name = tasklist_xml.get('name', '(unnamed)')
         logging.info("running tasklist '%s'", self.list_name)
-        for task in tasklist:
-            yield from self._run_task(task, testbed)
+        # actual tasks, with declarations stripped
+        actual_tasks = []
+        error_policy = "stop"
+        cleanup_task = None
+        for task_xml in tasklist_xml:
+            if task_xml.tag == "cleanup":
+                cleanup_name = task_xml.get('ref')
+                if cleanup_name is None:
+                    raise ExperimentSyntaxError("no cleanup task name given (ref missing)")
+                cleanup_task = tasklists_env.get(cleanup_name)
+                if cleanup_task is None:
+                    raise ExperimentSyntaxError("cleanup task %s not found\n" % (cleanup_name,))
+            if task_xml.tag == "on-error":
+                # XXX: validate
+                error_policy = task_xml.text
+            actual_tasks.append(task_xml)
+        try:
+            for task_xml in actual_tasks:
+                yield from self._run_task(task_xml, testbed, tasklists_env)
+        except ExperimentExecutionError:
+            logging.error("Got executing error, but cleaning up first")
+            if cleanup_task is not None and not noclean:
+                # Allow cleanup task to run, but without recursive cleaning.
+                yield from self.run(cleanup_task, testbed, tasklists_env, noclean=True)
+            raise
+
+        if cleanup_task is not None and not noclean:
+            # Allow cleanup task to run, but without recursive cleaning.
+            yield from self.run(cleanup_task, testbed, tasklists_env, noclean=True)
 
     @asyncio.coroutine
     def _sleep_until_ready(self, task):
@@ -267,85 +350,42 @@ class Node:
                     self.name)
 
     @asyncio.coroutine
-    def _run_task_run(self, task, testbed):
-        command_el = task.find('command')
-        task_name = task.get('name')
-        if command_el is None:
-            logging.warn(
-                    "Task %s from list %s is of type 'run', but has no command",
-                    name, self.list_name)
-            return
-        command = command_el.text
-        expected_ret_el = task.find('expected_return_code')
-        if expected_ret_el is None:
-            expected_return_code = None
-        else:
-            try:
-                expected_ret = int(expected_ret_el.text)
-            except ValueError:
-                expected_ret = None
-                logging.error(
-                        "Invalid number '%s'",
-                        expected_ret_el.text)
-        expected_output_el = task.find('expected_output')
-        if expected_output_el is None:
-            expected_output = None
-        else:
-            expected_output = expected_output_el.text
+    def _run_task_run(self, task_xml):
+        pol = RunTaskPolicy(self, task_xml)
 
-        if testbed.logroot_dir is not None:
-            dir = os.path.join(testbed.logroot_dir, self.name)
-            os.makedirs(dir, exist_ok=True)
-
-            errfilename = os.path.join(
-                    dir,
-                    "%s.%s.err" % (task_name, testbed.run_counter))
-            outfilename = os.path.join(
-                    dir,
-                    "%s.%s.out" % (task_name, testbed.run_counter))
-
-            with open(errfilename, 'w') as err, open(outfilename, 'w') as out:
-                coro = self.execute(
-                        command,
-                        expected_return_code, expected_output,
-                        stdout=out, stderr=err)
-                yield from self._run_until_timeout(coro, task)
-        else:
-            coro = self.execute(
-                    command,
-                    expected_return_code, expected_output,
-                    stdout=None, stderr=None)
-            yield from self._run_until_timeout(coro, task)
+        with pol.open_stdout() as stdout, pol.open_stderr() as stderr:
+            coro = self.execute(pol, stdout, stderr)
+            yield from self._run_until_timeout(coro, task_xml)
 
     @asyncio.coroutine
-    def _run_task(self, task, testbed):
-        name = task.get('name', '(unnamed-task)')
-        if task.get('enabled', 'true').lower() == 'false':
+    def _run_task(self, task_xml, testbed, tasklists_env):
+        name = task_xml.get('name', '(unnamed-task)')
+        if task_xml.get('enabled', 'true').lower() == 'false':
             logging.info("Task %s disabled", name)
             return
-        yield from self._sleep_until_ready(task)
-        if task.tag == 'run':
-            yield from self._run_task_run(task, testbed)
+        yield from self._sleep_until_ready(task_xml)
+        if task_xml.tag == 'run':
+            yield from self._run_task_run(task_xml)
             return
-        if task.tag == 'get':
-            source = find_text(task, 'source')
+        if task_xml.tag == 'get':
+            source = find_text(task_xml, 'source')
             destination = find_text(task, 'destination')
             coro = self.get(source, destination)
             yield from self._run_until_timeout(coro, task)
             return
-        if task.tag == 'put':
-            source = find_text(task, 'source')
-            destination = find_text(task, 'destination')
+        if task_xml.tag == 'put':
+            source = find_text(task_xml, 'source')
+            destination = find_text(task_xml, 'destination')
             coro = self.put(source, destination)
             yield from self._run_until_timeout(coro, task)
             return
-        if task.tag == 'sequence':
+        if task_xml.tag == 'sequence':
             for child_task in task:
                 yield from self._run_task(child_task)
             return
-        if task.tag == 'parallel':
+        if task_xml.tag == 'parallel':
             parallel_tasks = []
-            for child_task in task:
+            for child_task in task_xml:
                 coro = self._run_task(child_task)
                 task = asyncio.async(coro)
                 parallel_tasks.append(task)
@@ -360,14 +400,12 @@ class LocalNode(Node):
         super().__init__(node_xml, testbed)
 
     @asyncio.coroutine
-    def execute(
-            self, command,
-            expected_ret, expected_out,
-            stdout, stderr):
-        logging.info("Executing command '%s'", command)
+    def execute(self, pol, stderr, stdout):
+        logging.info("Executing command '%s'", pol.command)
         proc = yield from asyncio.create_subprocess_shell(
-                command, stdout=stdout, stderr=stderr)
+                pol.command, stdout=stdout, stderr=stderr)
         ret = yield from proc.wait()
+        pol.check_status(ret)
 
     @asyncio.coroutine
     def put(self, source, destination):
@@ -401,13 +439,10 @@ class SSHNode(Node):
         self.target = "%s@%s" % (self.user, self.host)
 
     @asyncio.coroutine
-    def execute(
-            self,
-            command, expected_ret, expected_out,
-            stdout, stderr):
+    def execute(self, pol, stdout, stderr):
         yield from self.testbed.ssh_acquire()
 
-        logging.info("Executing command '%s'", command)
+        logging.info("Executing command '%s'", pol.command)
         argv = ['ssh']
         # XXX: make optional
         argv.extend(['-o', 'StrictHostKeyChecking=no'])
@@ -416,13 +451,14 @@ class SSHNode(Node):
         argv.extend(['-p', str(self.port)])
         argv.extend(self.extra)
         argv.extend([self.target])
-        argv.extend(['--', command])
+        argv.extend(['--', pol.command])
         logging.info("SSH command '%s'", repr(argv))
         proc = yield from asyncio.create_subprocess_exec(
                 *argv,
                 stdout=stdout, stderr=stderr)
-        yield from proc.wait()
+        ret = yield from proc.wait()
         logging.info("SSH command terminated")
+        pol.check_status(ret)
 
         self.testbed.ssh_release()
 
@@ -484,6 +520,10 @@ def replace(element, replacement):
         raise Exception("concurrent modification")
     parent.remove(element)
     parent.insert(child_idx, replacement)
+
+
+def xq(node, query):
+    pass
 
 
 def prefix_names(el, prefix):

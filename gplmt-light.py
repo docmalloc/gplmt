@@ -68,7 +68,7 @@ if root.tag != "experiment":
 process_includes(document, parent_filename=args.experiment_file)
 ensure_names(document)
 
-targets = document.findall('/target')
+targets = document.findall('/targets/target')
 
 try:
     testbed = Testbed(
@@ -88,16 +88,16 @@ if steps is None:
     print("Warning: Nothing to do (no steps defined)")
     sys.exit(2)
 
-named_tasklists = {}
+tasklists_env = {}
 
-for x in document.xpath("/experiment/tasklist[@name]"):
-    named_tasklists[x.get('name')] = x
+for x in document.xpath("/experiment/tasklists/tasklist[@name]"):
+    tasklists_env[x.get('name')] = x
 
 
 def resolve_tasklist(el):
     refname = el.get('ref')
     if refname is not None:
-        tl = named_tasklists.get(refname)
+        tl = tasklists_env.get(refname)
         if tl is None:
             raise Exception("tasklist '%s' not found" % (refname,))
     else:
@@ -105,6 +105,7 @@ def resolve_tasklist(el):
         tl.extend(deepcopy(list(el)))
     return tl
 
+print("tasklists", tasklists_env)
 
 def run_steps(steps):
     for child in steps:
@@ -114,15 +115,21 @@ def run_steps(steps):
         if child.tag == "repeat":
             logging.warn("Repeat not implemented, skipping")
             continue
-        if child.tag == "start-tasklist":
+        if child.tag == "step":
             targets_def = child.get("targets")
             if targets_def is None:
-                logging.warn("start-tasklist has no targets, skipping")
+                logging.warn("step has no targets, skipping")
+                continue
+            tasklist_name = child.get("tasklist")
+            if tasklist_name is None:
+                logging.warn("step has no tasklist, skipping")
                 continue
             targets = targets_def.split(" \t,")
-            tasklist = resolve_tasklist(child)
+            tasklist = tasklists_env.get(tasklist_name)
+            if tasklist is None:
+                raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name))
             for target in targets:
-                testbed.schedule(target, tasklist)
+                testbed.schedule(target, tasklist, tasklists_env)
             continue
         if child.tag == "loop-counted":
             num_iter_attr = child.get("iterations")
