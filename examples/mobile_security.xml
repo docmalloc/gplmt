@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Mobile Messaging Experiment</description>
+
+  <targets>
+    <target name="control1" type="local" />
+    <target name="control2" type="ssh">
+      <user>root</user>
+      <host>xyz</host>
+    </target>
+  </targets>
+
+  <tasklists>
+    <tasklist name="create-tunnel-1">
+      <run>tunnel $TARGET1 &amp;&amp; echo "$$" > processes_to_kill</run>
+    </tasklist>
+    <tasklist name="xprivacy-setup">
+      <run>xprivacy-setup $LONG1 $LONG2 $LAT1 $LAT2</run>
+    </tasklist>
+    <tasklist name="create-tunnel-2">
+      <run>tunnel $TARGET2</run>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <step tasklist="xprivacy-setup" targets="control1" />
+    <step tasklist="create-tunnel-1" targets="control1" />
+    <step tasklist="create-tunnel-2" targets="control2" />
+
+    <synchonize />
+    <step tasklist="tcpdump" targets="control1 control2" />
+    <synchonize />
+    <step tasklist="execute-app" targets="control1" />
+    <synchonize />
+    <step tasklist="kill-tcpdump" targets="control1 control2" />
+    <synchonize />
+
+    <step tasklist="traceroute" targets="control1 control2" />
+
+    <synchonize />
+
+    <step tasklist="store-results" targets="control1 control2" />
+    <step tasklist="kill-tunnels" targets="control1 control2" />
+
+  </steps>
+</experiment>

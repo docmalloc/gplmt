@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  <description>Teardown example</description>
+
+  <targets>
+    <target name="me" type="local" />
+  </targets>
+
+  <tasklists>
+    <tasklist name="t1">
+      <run expected-status="1">false</run>
+    </tasklist>
+    <tasklist name="t2">
+      <run expected-status="0">false</run>
+    </tasklist>
+    <tasklist name="tx">
+      <run>echo tearing down</run>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <register-teardown tasklist="tx" targets="me" />
+    <step tasklist="t1" targets="me" />
+    <step tasklist="t2" targets="me" />
+  </steps>
+
+</experiment>

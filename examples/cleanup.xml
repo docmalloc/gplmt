@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  <description>Cleanup example</description>
+
+  <target name="me" type="local" />
+
+  <tasklist name="foo" on-error="stop" cleanup="cleanme">
+    <run expected-status="0">tunnel $TUNNEL1 </run>
+    <run expected-status="0">tunnel $TUNNEL2 </run>
+  </tasklist>
+
+  <tasklist name="cleanme">
+    <run>
+      <command>echo cleaned!</command>
+    </run>
+  </tasklist>
+
+  <steps>
+    <start-tasklist ref="foo" targets="me" />
+  </steps>
+
+</experiment>
