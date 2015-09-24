@@ -107,6 +107,8 @@ def resolve_tasklist(el):
 
 print("tasklists", tasklists_env)
 
+teardowns = []
+
 def run_steps(steps):
     for child in steps:
         if child.tag == "synchronize":
@@ -124,12 +126,25 @@ def run_steps(steps):
             if tasklist_name is None:
                 logging.warn("step has no tasklist, skipping")
                 continue
-            targets = targets_def.split(" \t,")
             tasklist = tasklists_env.get(tasklist_name)
             if tasklist is None:
-                raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name))
-            for target in targets:
-                testbed.schedule(target, tasklist, tasklists_env)
+                raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name,))
+            testbed.schedule(targets_def, tasklist, tasklists_env)
+            continue
+        if child.tag == 'register-teardown':
+            targets_def = child.get("targets")
+            if targets_def is None:
+                logging.warn("register-teardown has no targets, skipping")
+                continue
+            tasklist_name = child.get("tasklist")
+            if tasklist_name is None:
+                logging.warn("register-teardown has no tasklist, skipping")
+                continue
+            tasklist = tasklists_env.get(tasklist_name)
+            if tasklist is None:
+                raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name,))
+            logging.info("Registering teardown for '%s' on '%s'", tasklist_name, targets_def)
+            teardowns.append((targets_def, tasklist))
             continue
         if child.tag == "loop-counted":
             num_iter_attr = child.get("iterations")
@@ -154,6 +169,15 @@ try:
     run_steps(steps)
 except ExperimentExecutionError as e:
     logging.error("Aborting experiment:  %s" % (e.message))
+
+
+try:
+    for target, tasklist in teardowns:
+        testbed.schedule(target, tasklist, tasklists_env)
+        testbed.join_all()
+except ExperimentExecutionError as e:
+    logging.error("Error during teardown:  %s" % (e.message))
+
 
 # Necessary due to http://bugs.python.org/issue23548
 loop = asyncio.get_event_loop()

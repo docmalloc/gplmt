@@ -24,6 +24,7 @@ import logging
 import lxml.etree
 import os.path
 import shlex
+from shexpand import shexpand
 import signal
 import xmlrpc.client
 from concurrent.futures import FIRST_COMPLETED
@@ -32,11 +33,17 @@ from contextlib import contextmanager
 
 __all__ = [
     "Testbed",
+    "Experiment",
     "ExperimentExecutionError",
     "ExperimentSyntaxError",
     "process_includes",
     "ensure_names",
 ]
+
+
+class Experiment:
+    # TODO: factor out stuff from gplmt-light.py to here
+    pass
 
 
 class Testbed:
@@ -186,7 +193,7 @@ class Testbed:
 
     def _resolve_target(self, target_name):
         target_nodes = []
-        unresolved_names = {target_name}
+        unresolved_names = set(target_name.split(' '))
 
         while len(unresolved_names):
             n = unresolved_names.pop()
@@ -200,8 +207,6 @@ class Testbed:
         return target_nodes
 
     def schedule(self, target_name, tasklist_xml, tasklists_env):
-        print("groups", self.groups)
-        print("resolving target", target_name)
         target_nodes = self._resolve_target(target_name)
         for node in target_nodes:
             coro = node.run(tasklist_xml, self, tasklists_env)
@@ -234,17 +239,17 @@ class RunTaskPolicy:
         self.node = node
         self.command = run_xml.text
         task_name = run_xml.get('name')
-        expected_status_el = run_xml.get('expect-status')
+        expected_status_el = run_xml.get('expected-status')
         if expected_status_el is None:
             self.expected_status = None
         else:
             try:
-                self.expected_status = int(expected_status_el.text)
+                self.expected_status = int(expected_status_el)
             except ValueError:
                 expected_status = None
                 logging.error(
                         "Invalid number '%s'",
-                        expected_status_el.text)
+                        expected_status_el)
 
     def _mklogdir(self):
         dir = os.path.join(self.node.testbed.logroot_dir, self.node.name)
@@ -270,7 +275,7 @@ class RunTaskPolicy:
         # XXX: better error message
         logging.error("Unexpected status")
         raise ExperimentExecutionError("Unexpected status")
-
+    
     @contextmanager
     def open_stderr(self):
         if self.node.testbed.logroot_dir is None:
@@ -287,6 +292,19 @@ class Node:
     def __init__(self, node_xml, testbed):
         self.testbed = testbed
         self.name = node_xml.get('name')
+        self._env = {}
+        for env_xml in node_xml.findall('export-env'):
+            name = env_xml.get('var')
+            if name is None:
+                raise ExperimentSyntaxError("export-env misses 'var' attribute")
+            value = env_xml.get('value')
+            if value is None:
+                raise ExperimentSyntaxError("export-env misses 'value' attribute")
+            self._env[name] = shexpand(value)
+
+    @property
+    def env(self):
+        return self._env.copy()
 
     @asyncio.coroutine
     def run(self, tasklist_xml, testbed, tasklists_env, memo=None, noclean=False):
@@ -395,6 +413,23 @@ class Node:
             return
 
 
+def wrap_env(cmd, env):
+    """
+    Wrap a shell command in a call to 'env' with
+    the given environment variables.  Handles escaping.
+    """
+    argv = ['env']
+    for k, v in env.items():
+        pair = '%s=%s' % (k, v)
+        argv.append(shlex.quote(pair))
+
+    argv.append('sh')
+    argv.append('-c')
+    argv.append(shlex.quote(cmd))
+    return " ".join(argv)
+
+
+
 class LocalNode(Node):
     def __init__(self, node_xml, testbed):
         super().__init__(node_xml, testbed)
@@ -403,7 +438,7 @@ class LocalNode(Node):
     def execute(self, pol, stderr, stdout):
         logging.info("Executing command '%s'", pol.command)
         proc = yield from asyncio.create_subprocess_shell(
-                pol.command, stdout=stdout, stderr=stderr)
+                pol.command, stdout=stdout, stderr=stderr, env=self.env)
         ret = yield from proc.wait()
         pol.check_status(ret)
 
@@ -442,7 +477,13 @@ class SSHNode(Node):
     def execute(self, pol, stdout, stderr):
         yield from self.testbed.ssh_acquire()
 
+        cmd = pol.command
+
         logging.info("Executing command '%s'", pol.command)
+
+        if self.env:
+            cmd = wrap_env(cmd, self.env)
+
         argv = ['ssh']
         # XXX: make optional
         argv.extend(['-o', 'StrictHostKeyChecking=no'])
@@ -451,7 +492,7 @@ class SSHNode(Node):
         argv.extend(['-p', str(self.port)])
         argv.extend(self.extra)
         argv.extend([self.target])
-        argv.extend(['--', pol.command])
+        argv.extend(['--', cmd])
         logging.info("SSH command '%s'", repr(argv))
         proc = yield from asyncio.create_subprocess_exec(
                 *argv,
