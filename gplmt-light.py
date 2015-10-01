@@ -21,8 +21,6 @@
 import argparse
 import asyncio
 import sys
-import lxml.etree
-from lxml.etree import parse
 from gplmtlib import *
 from copy import deepcopy
 import logging
@@ -52,135 +50,8 @@ logging.basicConfig(
             datefmt='%Y-%m-%d %T %Z',
             level=logging.INFO)
 
-try:
-    document = parse(args.experiment_file)
-except OSError:
-    print("Fatal: could not load experiment file", file=sys.stderr)
-    sys.exit(1)
-
-root = document.getroot()
-
-if root.tag != "experiment":
-    print("Fatal: Root element must be 'experiment', not '%s'" % (root.tag,))
-    sys.exit(1)
-
-# XXX: this should be done by the library
-process_includes(document, parent_filename=args.experiment_file)
-ensure_names(document)
-
-targets = document.findall('/targets/target')
-
-try:
-    testbed = Testbed(
-            targets,
-            batch=args.batch,
-            dry=args.dry,
-            logroot_dir=args.logroot_dir,
-            ssh_parallelism=args.ssh_parallelism,
-            ssh_cooldown=args.ssh_cooldown)
-except ExperimentExecutionError as e:
-    logging.error("Not running experiment:  %s" % (e.message))
-    sys.exit(1)
-
-steps = root.find("steps")
-
-if steps is None:
-    print("Warning: Nothing to do (no steps defined)")
-    sys.exit(2)
-
-tasklists_env = {}
-
-for x in document.xpath("/experiment/tasklists/tasklist[@name]"):
-    tasklists_env[x.get('name')] = x
 
 
-def resolve_tasklist(el):
-    refname = el.get('ref')
-    if refname is not None:
-        tl = tasklists_env.get(refname)
-        if tl is None:
-            raise Exception("tasklist '%s' not found" % (refname,))
-    else:
-        tl = lxml.etree.Element('tasklist')
-        tl.extend(deepcopy(list(el)))
-    return tl
+experiment = Experiment.from_file(args.experiment_file, settings=args)
+experiment.run()
 
-print("tasklists", tasklists_env)
-
-teardowns = []
-
-def run_steps(steps):
-    for child in steps:
-        if child.tag == "synchronize":
-            testbed.join_all()
-            continue
-        if child.tag == "repeat":
-            logging.warn("Repeat not implemented, skipping")
-            continue
-        if child.tag == "step":
-            targets_def = child.get("targets")
-            if targets_def is None:
-                logging.warn("step has no targets, skipping")
-                continue
-            tasklist_name = child.get("tasklist")
-            if tasklist_name is None:
-                logging.warn("step has no tasklist, skipping")
-                continue
-            tasklist = tasklists_env.get(tasklist_name)
-            if tasklist is None:
-                raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name,))
-            testbed.schedule(targets_def, tasklist, tasklists_env)
-            continue
-        if child.tag == 'register-teardown':
-            targets_def = child.get("targets")
-            if targets_def is None:
-                logging.warn("register-teardown has no targets, skipping")
-                continue
-            tasklist_name = child.get("tasklist")
-            if tasklist_name is None:
-                logging.warn("register-teardown has no tasklist, skipping")
-                continue
-            tasklist = tasklists_env.get(tasklist_name)
-            if tasklist is None:
-                raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name,))
-            logging.info("Registering teardown for '%s' on '%s'", tasklist_name, targets_def)
-            teardowns.append((targets_def, tasklist))
-            continue
-        if child.tag == "loop-counted":
-            num_iter_attr = child.get("iterations")
-            if num_iter_attr is None:
-                logging.error("counted loop is missing attribute iterations, skipping")
-                continue
-            try:
-                num_iter = int(num_iter_attr)
-            except ValueError:
-                logging.error("counted loop has malformed attribute iterations (%s), skipping", num_iter_attr)
-                continue
-            logging.info("Starting counted loop")
-            for x in range(num_iter):
-                run_steps(list(child))
-                testbed.join_all()
-            logging.info("Done with counted loop")
-            continue
-        logging.error("Unexpected step '%s'", child.tag)
-    testbed.join_all()
-
-try:
-    run_steps(steps)
-except ExperimentExecutionError as e:
-    logging.error("Aborting experiment:  %s" % (e.message))
-
-
-try:
-    for target, tasklist in teardowns:
-        testbed.schedule(target, tasklist, tasklists_env)
-        testbed.join_all()
-except ExperimentExecutionError as e:
-    logging.error("Error during teardown:  %s" % (e.message))
-
-
-# Necessary due to http://bugs.python.org/issue23548
-loop = asyncio.get_event_loop()
-loop.close()
-
-logging.info("Experiment finished")
