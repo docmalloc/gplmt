@@ -1,13 +1,9 @@
-# Usually our root element is 'experiment'.
-# We do allow 'targets' and 'tasklist' as well,
-# which is useful for files that are only included.
-start = experiment | targets | tasklist
-
+start = experiment
 
 experiment = element experiment {
   element description { text }?,
 
-  \include*
+  \include*,
 
   element targets { target* },
 
@@ -23,15 +19,35 @@ experiment = element experiment {
 
 target = element target {
   attribute name { text },
-  # XXX
+  ((export-env*) & (target-ssh | target-local | target-planetlab))
 }
+
+export-env = element export-env {
+  attribute var { text },
+  attribute value { text }?
+}
+
+target-ssh =
+  attribute type { "ssh" },
+  (element user { text } &
+  element host { text })
+
+target-planetlab =
+  attribute type { "planetlab" },
+  (element slicename { text } &
+  element apiurl { text } &
+  element user { text })
+
+target-local =
+  attribute type { "local" }
 
 
 tasklist = element tasklist {
   attribute name { text },
-  attribute on-error { text },
-  attribute clean { text },
-  parallel | sequence 
+  attribute on-error { text }?,
+  attribute cleanup { text }?,
+  attribute timeout { xsd:duration }?,
+  task*
 }
 
 call = element call {
@@ -47,30 +63,28 @@ put = element put { copy_body }
 get = element get { copy_body }
 
 sublist_body =
-  timeout,
   attribute name { text }?,
   attribute enabled { xsd:boolean }?,
   task*
 
+timeout = attribute timeout { xsd:duration }
 
 copy_body = 
-  timeout,
   element source { text },
   element destination { text }
 
 run = element run {
-  timeout,
-  element command { text },
-  element expected-status { xsd:integer }
+  attribute expected-status { xsd:integer }?,
+  text
 }
 
-step =
+step = (
   element synchronize { empty } |
   element step {
     start_time?,
     stop_time?,
     attribute targets { text },
-    attribute tasklist { text },
+    attribute tasklist { text }
   } |
   element repeat {
     attribute iterations { xsd:integer }?,
@@ -78,6 +92,7 @@ step =
     attribute during { xsd:duration }?,
     step
   }
+)
 
 start_time =
  attribute start_absolute { xsd:dateTime } |
