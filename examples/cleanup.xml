@@ -2,21 +2,24 @@
 <experiment>
   <description>Cleanup example</description>
 
-  <target name="me" type="local" />
+  <targets>
+    <target name="me" type="local" />
+  </targets>
 
-  <tasklist name="foo" on-error="stop" cleanup="cleanme">
-    <run expected-status="0">tunnel $TUNNEL1 </run>
-    <run expected-status="0">tunnel $TUNNEL2 </run>
-  </tasklist>
+  <tasklists>
+    <tasklist name="foo" on-error="stop" cleanup="cleanme">
+      <run expected-status="0">true</run>
+      <run expected-status="0">false</run>
+      <run>echo not reached</run>
+    </tasklist>
 
-  <tasklist name="cleanme">
-    <run>
-      <command>echo cleaned!</command>
-    </run>
-  </tasklist>
+    <tasklist name="cleanme">
+      <run>echo cleaned!</run>
+    </tasklist>
+  </tasklists>
 
   <steps>
-    <start-tasklist ref="foo" targets="me" />
+    <step tasklist="foo" targets="me" />
   </steps>
 
 </experiment>

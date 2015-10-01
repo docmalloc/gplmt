@@ -28,17 +28,17 @@
     <step tasklist="create-tunnel-1" targets="control1" />
     <step tasklist="create-tunnel-2" targets="control2" />
 
-    <synchonize />
+    <synchronize />
     <step tasklist="tcpdump" targets="control1 control2" />
-    <synchonize />
+    <synchronize />
     <step tasklist="execute-app" targets="control1" />
-    <synchonize />
+    <synchronize />
     <step tasklist="kill-tcpdump" targets="control1 control2" />
-    <synchonize />
+    <synchronize />
 
     <step tasklist="traceroute" targets="control1 control2" />
 
-    <synchonize />
+    <synchronize />
 
     <step tasklist="store-results" targets="control1 control2" />
     <step tasklist="kill-tunnels" targets="control1 control2" />

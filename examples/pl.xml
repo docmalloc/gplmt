@@ -3,18 +3,21 @@
   
   <description>PlanetLab example, shows node information</description>
 
-  <target name="pl-dold" type="planetlab">
-    <apiurl>https://www.planet-lab.eu/PLCAPI/</apiurl>
-    <slicename>tumple_gnunet_deployment</slicename>
-    <user>dold@in.tum.de</user>
-  </target>
+  <targets>
+    <target name="pl-dold" type="planetlab">
+      <apiurl>https://www.planet-lab.eu/PLCAPI/</apiurl>
+      <slicename>tumple_gnunet_deployment</slicename>
+      <user>dold@in.tum.de</user>
+    </target>
+  </targets>
+
+  <tasklists>
+    <tasklist timeout="PT30S" name="disk_space">
+      <run>hostname; df -h</run>
+    </tasklist>
+  </tasklists>
 
   <steps>
-    <start-tasklist targets="pl-dold">
-      <run name="disk_space">
-        <end_relative>PT30S</end_relative>
-        <command>hostname; df -h</command>
-      </run>
-    </start-tasklist>
+    <step tasklist="disk_space" targets="pl-dold" />
   </steps>
 </experiment>

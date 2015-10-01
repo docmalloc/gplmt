@@ -3,23 +3,32 @@
   
   <description>SSH example</description>
 
-  <target name="sam" type="ssh">
-    <user>dold</user>
-    <host>sam.net.in.tum.de</host>
-  </target>
+  <targets>
+    <target name="sam" type="ssh">
+      <user>dold</user>
+      <host>sam.net.in.tum.de</host>
+    </target>
+    <target name="local" type="local" />
+  </targets>
 
-  <target name="local" type="local" />
-
-  <steps>
-    <start-tasklist targets="sam">
+  <tasklists>
+    <tasklist name="my-put">
       <put>
         <source>myfile</source>
         <destination>myfile</destination>
       </put>
+    </tasklist>
+    <tasklist name="my-get">
       <get>
         <source>myfile</source>
         <destination>myfile_out</destination>
       </get>
-    </start-tasklist>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <step tasklist="my-put" targets="sam" />
+    <synchronize />
+    <step tasklist="my-get" targets="sam" />
   </steps>
 </experiment>

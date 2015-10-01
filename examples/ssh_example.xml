@@ -3,24 +3,22 @@
   
   <description>SSH example</description>
 
-  <target name="sam" type="ssh">
-    <user>dold</user>
-    <host>sam.net.in.tum.de</host>
-  </target>
+  <targets>
+    <target name="sam" type="ssh">
+      <user>dold</user>
+      <host>sam.net.in.tum.de</host>
+    </target>
+    <target name="local" type="local" />
+  </targets>
 
-  <target name="local" type="local" />
+  <tasklists>
+    <tasklist name="hostinfo">
+      <run>uname -a</run>
+      <run>uptime</run>
+    </tasklist>
+  </tasklists>
 
   <steps>
-    <start-tasklist targets="sam">
-      <run name="first_echo">
-        <command>echo "I Hello"</command>
-      </run>
-      <run>
-        <command>uname -a</command>
-      </run>
-      <run>
-        <command>uname -a</command>
-      </run>
-    </start-tasklist>
+    <step tasklist="hostinfo" targets="sam" />
   </steps>
 </experiment>
