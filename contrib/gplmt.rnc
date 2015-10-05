@@ -41,23 +41,24 @@ target-planetlab =
 target-local =
   attribute type { "local" }
 
+tasklist-name = text
 
 tasklist = element tasklist {
   attribute name { text },
-  attribute on-error { text }?,
-  attribute cleanup { text }?,
+  attribute on-error { ( "panic" | "abort-tasklist" | "abort-step" ) }?,
+  attribute cleanup { tasklist-name }?,
   attribute timeout { xsd:duration }?,
-  task*
+  (seq | par)
 }
 
 call = element call {
-  attribute name { text }
+  attribute tasklist { tasklist-name }
 }
 
-task = call | sequence | parallel | run | put | get
+task = call | seq | par | run | put | get
 
-sequence = element sequence { sublist_body }
-parallel = element parellel { sublist_body }
+seq = element seq { sublist_body }
+par = element par { sublist_body }
 
 put = element put { copy_body }
 get = element get { copy_body }
@@ -90,7 +91,10 @@ step = (
     attribute iterations { xsd:integer }?,
     attribute until { xsd:dateTime }?,
     attribute during { xsd:duration }?,
-    step
+    step*
+  } |
+  element register-teardown {
+    attribute tasklist { tasklist-name }
   }
 )
 

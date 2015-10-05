@@ -114,23 +114,32 @@
   </xs:attributeGroup>
   <xs:element name="tasklist">
     <xs:complexType>
-      <xs:sequence>
-        <xs:element minOccurs="0" maxOccurs="unbounded" ref="task"/>
-      </xs:sequence>
+      <xs:choice>
+        <xs:element ref="seq"/>
+        <xs:element ref="par"/>
+      </xs:choice>
       <xs:attribute name="name" use="required"/>
-      <xs:attribute name="on-error"/>
+      <xs:attribute name="on-error">
+        <xs:simpleType>
+          <xs:restriction base="xs:token">
+            <xs:enumeration value="panic"/>
+            <xs:enumeration value="abort-tasklist"/>
+            <xs:enumeration value="abort-step"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
       <xs:attribute name="cleanup"/>
       <xs:attribute name="timeout" type="xs:duration"/>
     </xs:complexType>
   </xs:element>
   <xs:element name="call" substitutionGroup="task">
     <xs:complexType>
-      <xs:attribute name="name" use="required"/>
+      <xs:attribute name="tasklist" use="required"/>
     </xs:complexType>
   </xs:element>
   <xs:element name="task" abstract="true"/>
-  <xs:element name="sequence" substitutionGroup="task" type="sublist_body"/>
-  <xs:element name="parellel" substitutionGroup="task" type="sublist_body"/>
+  <xs:element name="seq" substitutionGroup="task" type="sublist_body"/>
+  <xs:element name="par" substitutionGroup="task" type="sublist_body"/>
   <xs:element name="put" substitutionGroup="task" type="copy_body"/>
   <xs:element name="get" substitutionGroup="task" type="copy_body"/>
   <xs:complexType name="sublist_body">
@@ -161,6 +170,7 @@
       <xs:element ref="synchronize"/>
       <xs:element ref="step"/>
       <xs:element ref="repeat"/>
+      <xs:element ref="register-teardown"/>
     </xs:choice>
   </xs:group>
   <xs:element name="synchronize">
@@ -176,10 +186,15 @@
   </xs:element>
   <xs:element name="repeat">
     <xs:complexType>
-      <xs:group ref="step"/>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="step"/>
       <xs:attribute name="iterations" type="xs:integer"/>
       <xs:attribute name="until" type="xs:dateTime"/>
       <xs:attribute name="during" type="xs:duration"/>
+    </xs:complexType>
+  </xs:element>
+  <xs:element name="register-teardown">
+    <xs:complexType>
+      <xs:attribute name="tasklist" use="required"/>
     </xs:complexType>
   </xs:element>
   <xs:attributeGroup name="start_time">
