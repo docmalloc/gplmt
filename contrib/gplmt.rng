@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grammar xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <start>
+    <ref name="experiment"/>
+  </start>
+  <define name="experiment">
+    <element name="experiment">
+      <optional>
+        <element name="description">
+          <text/>
+        </element>
+      </optional>
+      <zeroOrMore>
+        <ref name="include"/>
+      </zeroOrMore>
+      <element name="targets">
+        <zeroOrMore>
+          <ref name="target"/>
+        </zeroOrMore>
+      </element>
+      <element name="tasklists">
+        <zeroOrMore>
+          <ref name="tasklist"/>
+        </zeroOrMore>
+      </element>
+      <element name="steps">
+        <zeroOrMore>
+          <ref name="step"/>
+        </zeroOrMore>
+      </element>
+    </element>
+  </define>
+  <define name="include">
+    <element name="include">
+      <attribute name="file"/>
+      <attribute name="prefix"/>
+    </element>
+  </define>
+  <define name="target">
+    <element name="target">
+      <attribute name="name"/>
+      <interleave>
+        <zeroOrMore>
+          <ref name="export-env"/>
+        </zeroOrMore>
+        <choice>
+          <ref name="target-ssh"/>
+          <ref name="target-local"/>
+          <ref name="target-planetlab"/>
+        </choice>
+      </interleave>
+    </element>
+  </define>
+  <define name="export-env">
+    <element name="export-env">
+      <attribute name="var"/>
+      <optional>
+        <attribute name="value"/>
+      </optional>
+    </element>
+  </define>
+  <define name="target-ssh">
+    <attribute name="type">
+      <value>ssh</value>
+    </attribute>
+    <interleave>
+      <element name="user">
+        <text/>
+      </element>
+      <element name="host">
+        <text/>
+      </element>
+    </interleave>
+  </define>
+  <define name="target-planetlab">
+    <attribute name="type">
+      <value>planetlab</value>
+    </attribute>
+    <interleave>
+      <element name="slicename">
+        <text/>
+      </element>
+      <element name="apiurl">
+        <text/>
+      </element>
+      <element name="user">
+        <text/>
+      </element>
+    </interleave>
+  </define>
+  <define name="target-local">
+    <attribute name="type">
+      <value>local</value>
+    </attribute>
+  </define>
+  <define name="tasklist-name">
+    <text/>
+  </define>
+  <define name="tasklist">
+    <element name="tasklist">
+      <attribute name="name"/>
+      <optional>
+        <attribute name="on-error">
+          <choice>
+            <value>panic</value>
+            <value>abort-tasklist</value>
+            <value>abort-step</value>
+          </choice>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="cleanup">
+          <ref name="tasklist-name"/>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="timeout">
+          <data type="duration"/>
+        </attribute>
+      </optional>
+      <choice>
+        <ref name="seq"/>
+        <ref name="par"/>
+      </choice>
+    </element>
+  </define>
+  <define name="call">
+    <element name="call">
+      <attribute name="tasklist">
+        <ref name="tasklist-name"/>
+      </attribute>
+    </element>
+  </define>
+  <define name="task">
+    <choice>
+      <ref name="call"/>
+      <ref name="seq"/>
+      <ref name="par"/>
+      <ref name="run"/>
+      <ref name="put"/>
+      <ref name="get"/>
+    </choice>
+  </define>
+  <define name="seq">
+    <element name="seq">
+      <ref name="sublist_body"/>
+    </element>
+  </define>
+  <define name="par">
+    <element name="par">
+      <ref name="sublist_body"/>
+    </element>
+  </define>
+  <define name="put">
+    <element name="put">
+      <ref name="copy_body"/>
+    </element>
+  </define>
+  <define name="get">
+    <element name="get">
+      <ref name="copy_body"/>
+    </element>
+  </define>
+  <define name="sublist_body">
+    <optional>
+      <attribute name="name"/>
+    </optional>
+    <optional>
+      <attribute name="enabled">
+        <data type="boolean"/>
+      </attribute>
+    </optional>
+    <zeroOrMore>
+      <ref name="task"/>
+    </zeroOrMore>
+  </define>
+  <define name="timeout">
+    <attribute name="timeout">
+      <data type="duration"/>
+    </attribute>
+  </define>
+  <define name="copy_body">
+    <element name="source">
+      <text/>
+    </element>
+    <element name="destination">
+      <text/>
+    </element>
+  </define>
+  <define name="run">
+    <element name="run">
+      <optional>
+        <attribute name="expected-status">
+          <data type="integer"/>
+        </attribute>
+      </optional>
+      <text/>
+    </element>
+  </define>
+  <define name="step">
+    <choice>
+      <element name="synchronize">
+        <empty/>
+      </element>
+      <element name="step">
+        <optional>
+          <ref name="start_time"/>
+        </optional>
+        <optional>
+          <ref name="stop_time"/>
+        </optional>
+        <attribute name="targets"/>
+        <attribute name="tasklist"/>
+      </element>
+      <element name="repeat">
+        <optional>
+          <attribute name="iterations">
+            <data type="integer"/>
+          </attribute>
+        </optional>
+        <optional>
+          <attribute name="until">
+            <data type="dateTime"/>
+          </attribute>
+        </optional>
+        <optional>
+          <attribute name="during">
+            <data type="duration"/>
+          </attribute>
+        </optional>
+        <zeroOrMore>
+          <ref name="step"/>
+        </zeroOrMore>
+      </element>
+      <element name="register-teardown">
+        <attribute name="tasklist">
+          <ref name="tasklist-name"/>
+        </attribute>
+      </element>
+    </choice>
+  </define>
+  <define name="start_time">
+    <choice>
+      <attribute name="start_absolute">
+        <data type="dateTime"/>
+      </attribute>
+      <attribute name="start_relative">
+        <data type="duration"/>
+      </attribute>
+    </choice>
+  </define>
+  <define name="stop_time">
+    <choice>
+      <attribute name="stop_absolute">
+        <data type="dateTime"/>
+      </attribute>
+      <attribute name="stop_relative">
+        <data type="duration"/>
+      </attribute>
+    </choice>
+  </define>
+</grammar>
