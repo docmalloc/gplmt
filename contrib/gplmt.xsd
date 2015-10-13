@@ -14,9 +14,7 @@
   <xs:element name="description" type="xs:string"/>
   <xs:element name="targets">
     <xs:complexType>
-      <xs:sequence>
-        <xs:element minOccurs="0" maxOccurs="unbounded" ref="target"/>
-      </xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="target"/>
     </xs:complexType>
   </xs:element>
   <xs:element name="tasklists">
@@ -37,27 +35,33 @@
       <xs:attribute name="prefix" use="required"/>
     </xs:complexType>
   </xs:element>
-  <xs:element name="target">
-    <xs:complexType>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element ref="export-env"/>
-        <xs:choice>
-          <xs:group ref="target-ssh"/>
-          <xs:group ref="target-planetlab"/>
-        </xs:choice>
-      </xs:choice>
-      <xs:attribute name="name" use="required"/>
-      <xs:attribute name="type" use="required">
-        <xs:simpleType>
-          <xs:restriction base="xs:token">
-            <xs:enumeration value="ssh"/>
-            <xs:enumeration value="local"/>
-            <xs:enumeration value="planetlab"/>
-          </xs:restriction>
-        </xs:simpleType>
-      </xs:attribute>
-    </xs:complexType>
-  </xs:element>
+  <xs:group name="target">
+    <xs:sequence>
+      <xs:element name="target">
+        <xs:complexType>
+          <xs:choice minOccurs="0" maxOccurs="unbounded">
+            <xs:element ref="export-env"/>
+            <xs:choice>
+              <xs:group ref="target-ssh"/>
+              <xs:group ref="target-planetlab"/>
+              <xs:group ref="target-group"/>
+            </xs:choice>
+          </xs:choice>
+          <xs:attribute name="name" use="required"/>
+          <xs:attribute name="type" use="required">
+            <xs:simpleType>
+              <xs:restriction base="xs:token">
+                <xs:enumeration value="ssh"/>
+                <xs:enumeration value="local"/>
+                <xs:enumeration value="planetlab"/>
+                <xs:enumeration value="group"/>
+              </xs:restriction>
+            </xs:simpleType>
+          </xs:attribute>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:group>
   <xs:element name="export-env">
     <xs:complexType>
       <xs:attribute name="var" use="required"/>
@@ -112,6 +116,33 @@
       </xs:simpleType>
     </xs:attribute>
   </xs:attributeGroup>
+  <xs:group name="target-group">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:group ref="target"/>
+        <xs:group ref="reftarget"/>
+      </xs:choice>
+    </xs:sequence>
+  </xs:group>
+  <xs:attributeGroup name="target-group">
+    <xs:attribute name="type" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:token">
+          <xs:enumeration value="group"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:attributeGroup>
+  <!-- only used to refer other targets by names in groups -->
+  <xs:group name="reftarget">
+    <xs:sequence>
+      <xs:element name="target">
+        <xs:complexType>
+          <xs:attribute name="ref" use="required"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:group>
   <xs:element name="tasklist">
     <xs:complexType>
       <xs:choice>

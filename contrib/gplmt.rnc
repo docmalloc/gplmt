@@ -19,7 +19,7 @@ experiment = element experiment {
 
 target = element target {
   attribute name { text },
-  ((export-env*) & (target-ssh | target-local | target-planetlab))
+  ((export-env*) & (target-ssh | target-local | target-planetlab | target-group))
 }
 
 export-env = element export-env {
@@ -40,6 +40,13 @@ target-planetlab =
 
 target-local =
   attribute type { "local" }
+
+target-group =
+  attribute type { "group" },
+  (target | reftarget)*
+
+# only used to refer other targets by names in groups
+reftarget = element target { attribute ref { text } }
 
 tasklist-name = text
 

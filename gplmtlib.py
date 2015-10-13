@@ -76,7 +76,6 @@ class Experiment:
             testbed.join_all()
         except ExperimentExecutionError as e:
             logging.error("Experiment error: %s", e.message)
-            raise Exception()
 
         testbed.run_teardowns(self.tasklists_env)
 
@@ -168,6 +167,7 @@ class Testbed:
             if name is None:
                 raise ExperimentSyntaxError("target must have ref or name")
             members.append(name)
+            # XXX: pass environment of group down to the peers of the group
             self._process_declaration(el)
         self.groups[els.get('name')] = members
 
@@ -457,7 +457,7 @@ class Node:
         except ExperimentExecutionError:
             logging.error("Tasklist execution (%s on %s) raised exception", list_name, self.name)
             if error_policy == 'panic':
-                # Give up without cleaning up
+                # XXX: WRONG: Give up without cleaning up
                 raise
             if cleanup_task is not None and not noclean:
                 logging.error("Experiment execution failed, but cleaning up first")
@@ -578,6 +578,7 @@ class SSHNode(Node):
     @asyncio.coroutine
     def establish_master(self):
         control_path = self.get_control_path()
+        # XXX: maybe check that the master process is actually running
         if os.path.exists(control_path):
             logging.info("Using existing master")
             # XXX: increase semaphore
@@ -598,6 +599,7 @@ class SSHNode(Node):
             raise ExperimentExecutionError("Failed to create SSH master connection to '%s'" % (self.name,))
 
     def get_control_path(self):
+        # FIXME: other directory (e.g. ~/.config/gplmt)?
         p = "~/.ssh/gplmt-%(host)s@%(user)s:%(port)s" % {
             "host": self.host, "user": self.user, "port": self.port
         }

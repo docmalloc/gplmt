@@ -47,6 +47,7 @@
           <ref name="target-ssh"/>
           <ref name="target-local"/>
           <ref name="target-planetlab"/>
+          <ref name="target-group"/>
         </choice>
       </interleave>
     </element>
@@ -92,6 +93,23 @@
     <attribute name="type">
       <value>local</value>
     </attribute>
+  </define>
+  <define name="target-group">
+    <attribute name="type">
+      <value>group</value>
+    </attribute>
+    <zeroOrMore>
+      <choice>
+        <ref name="target"/>
+        <ref name="reftarget"/>
+      </choice>
+    </zeroOrMore>
+  </define>
+  <!-- only used to refer other targets by names in groups -->
+  <define name="reftarget">
+    <element name="target">
+      <attribute name="ref"/>
+    </element>
   </define>
   <define name="tasklist-name">
     <text/>
