@@ -52,5 +52,5 @@ logging.basicConfig(
             level=logging.INFO)
 
 experiment = Experiment.from_file(args.experiment_file, settings=args)
-experiment.run()
+experiment.run_synchronous()
 

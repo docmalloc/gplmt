@@ -26,6 +26,7 @@ import os.path
 import shlex
 import signal
 import xmlrpc.client
+import time
 from concurrent.futures import FIRST_COMPLETED
 from lxml.builder import E
 from contextlib import contextmanager
@@ -71,105 +72,58 @@ class Experiment:
         process_includes(document, parent_filename=filename)
         return Experiment(document, settings)
 
+    @asyncio.coroutine
     def _run(self):
         testbed = Testbed(self.targets, self.settings)
 
         try:
             for step in self.steps:
-                testbed.run_step(step, self.tasklists_env)
-            testbed.join()
+                yield from testbed.run_step(step, self.tasklists_env)
+            yield from testbed.join()
         except ExperimentSyntaxError as e:
             logging.error("Syntax error: %s", e.message)
         except StopExperimentException as e:
             logging.error("Stop requested (%s)", e.scope)
 
-        testbed.run_teardowns(self.tasklists_env)
+        yield from testbed.run_teardowns(self.tasklists_env)
 
         # Take care of stuff that was aborted or background tasks
-        testbed.cancel_pending()
+        yield from testbed.cancel_pending()
 
-    def run(self):
+    def run_synchronous(self):
+        loop = asyncio.get_event_loop()
         try:
-            self._run()
+            loop.run_until_complete(self._run())
         finally:
             # Necessary due to http://bugs.python.org/issue23548
-            loop = asyncio.get_event_loop()
             loop.close()
 
 
 class ExecutionContext:
-    def __init__(self):
-        self.tasks = {}
-
-    @asyncio.coroutine
-    def join(self, targets=None):
-        pass
-
-    def schedule_loop(...):
-        pass
-
-    def schedule_tasklist(...):
-        pass
-
-
-class Testbed:
-    def __init__(self, targets_xml, settings):
-        self.batch = settings.batch
-        self.ssh_cooldown = settings.ssh_cooldown
-        self.logroot_dir = settings.logroot_dir
-        self.nodes = {}
-        self.groups = {}
-        self.settings = settings
-        for el in targets_xml:
-            self._process_declaration(el)
-
+    def __init__(self, testbed):
+        self.testbed = testbed
         self.tasks = []
 
-        self.teardowns = []
-
-        # counter for sequential numbering of task runs
-        self.run_counter = 0
-
-        self.ssh_cooldown_lock = asyncio.Lock()
-        self.ssh_parallel_sema = asyncio.Semaphore(settings.ssh_parallelism)
 
     @asyncio.coroutine
-    def ssh_acquire(self):
-        yield from self.ssh_parallel_sema.acquire()
-        if self.ssh_cooldown is not None:
-            yield from self.ssh_cooldown_lock.acquire()
-            # as soon as we get the lock,
-            # we schedule a function that releases it
-            # after the cooldown period.
-            loop = asyncio.get_event_loop()
-            loop.call_later(
-                    self.ssh_cooldown,
-                    lambda: self.ssh_cooldown_lock.release())
+    def cancel_pending(self):
+        """Cancel all pending tasks"""
+        if not self.tasks:
+            return
+        for p in self.tasks:
+            p.cancel()
+        yield asyncio.wait(self.tasks)
 
-    def run_teardowns(self, tasklists_env):
-        try:
-            for target, tasklist in self.teardowns:
-                self.schedule_tasklist(target, tasklist, tasklists_env)
-                self.join()
-        except ExperimentExecutionError as e:
-            logging.error("Error during teardown:  %s" % (e.message))
-
-    def ssh_release(self):
-        # Note that the cooldown lock will
-        # be released by a timer.
-        self.ssh_parallel_sema.release()
-
+    @asyncio.coroutine
     def join(self, targets=None):
         """ Block on pending tasks until
         complete or requested to stop by an exception"""
         if not len(self.tasks):
             logging.info("Synchronized nodes (no tasks)")
             return
-        loop = asyncio.get_event_loop()
         while self.tasks:
-            join_coro = asyncio.wait(self.tasks, return_when=FIRST_COMPLETED)
             try:
-                done, ts = loop.run_until_complete(join_coro)
+                done, ts = yield from asyncio.wait(self.tasks, return_when=FIRST_COMPLETED)
                 self.tasks = list(ts)
                 del ts
                 logging.info('%s tasks done, %s task pending', len(done), len(self.tasks))
@@ -200,19 +154,175 @@ class Testbed:
                     done = False
             if done:
                 break
-            # XXX: implement
         logging.info("Synchronized nodes")
 
+    def schedule_tasklist(self, target_name, tasklist_xml, tasklists_env, background):
+        target_nodes = self.testbed._resolve_target(target_name)
+        for node in target_nodes:
+            coro = node.run_tasklist(tasklist_xml, tasklists_env)
+            task = asyncio.async(coro)
+            task.gplmt_background = background
+            self.tasks.append(task)
 
-    def cancel_pending(self):
-        """Cancel all pending tasks"""
-        if not self.tasks:
+    def schedule_loop_counted(self, loop_xml, tasklists_env, repetitions):
+        coro = self.run_loop_counted(loop_xml, tasklists_env, repetitions)
+        task = asyncio.async(coro)
+        task.gplmt_background = False
+        self.tasks.append(task)
+
+    def schedule_loop_until(self, loop_xml, tasklists_env, deadline):
+        coro = self.run_loop_until(loop_xml, tasklists_env, deadline)
+        task = asyncio.async(coro)
+        task.gplmt_background = False
+        self.tasks.append(task)
+
+    @asyncio.coroutine
+    def run_loop_counted(self, loop_xml, tasklists_env, repetitions):
+        print("running loop")
+        print(lxml.etree.tostring(loop_xml, pretty_print=True))
+        nested_ec = ExecutionContext(self.testbed)
+        for x in range(repetitions):
+            for step in list(loop_xml):
+                yield from nested_ec.run_step(step, tasklists_env)
+            yield from nested_ec.join()
+
+    @asyncio.coroutine
+    def run_loop_until(self, loop_xml, tasklists_env, deadline):
+        nested_ec = ExecutionContext(self.testbed)
+        while time.time() < deadline:
+            for step in list(loop_xml):
+                yield from nested_ec.run_step(step, tasklists_env)
+            yield from nested_ec.join()
+
+    @asyncio.coroutine
+    def run_step(self, step_xml, tasklists_env):
+        if step_xml.tag not in self._step_table:
+            raise ExperimentSyntaxError("Invalid step '%s'" % (step_xml.tag,))
+        step_method = self._step_table[step_xml.tag]
+        yield from step_method(self, step_xml, tasklists_env)
+
+    @asyncio.coroutine
+    def _step_synchronize(self, step_xml, tasklists_env):
+        # XXX: only join on targets node if given in the element
+        targets = None
+        targets_str = step_xml.get('targets')
+        if targets_str is not None:
+            targets = self._resolve_target(target_str)
+        self.join(targets)
+
+    @asyncio.coroutine
+    def _step_tasklist(self, step_xml, tasklists_env):
+        targets_def = step_xml.get("targets")
+        if targets_def is None:
+            logging.warn("step has no targets, skipping")
             return
-        loop = asyncio.get_event_loop()
-        for p in self.tasks:
-            p.cancel()
-        join_coro = asyncio.wait(self.tasks)
-        done, self.tasks = loop.run_until_complete(join_coro)
+        tasklist_name = step_xml.get("tasklist")
+        if tasklist_name is None:
+            logging.warn("step has no tasklist, skipping")
+            return
+        tasklist = tasklists_env.get(tasklist_name)
+        if tasklist is None:
+            raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name,))
+        background = False
+        bg_str = step_xml.get('background')
+        if bg_str is not None and bg_str.lower() == 'true':
+            background = True
+        self.schedule_tasklist(targets_def, tasklist, tasklists_env, background)
+
+    @asyncio.coroutine
+    def _step_teardown(self, step_xml, tasklists_env):
+        targets_def = step_xml.get("targets")
+        if targets_def is None:
+            logging.warn("register-teardown has no targets, skipping")
+            return
+        tasklist_name = step_xml.get("tasklist")
+        if tasklist_name is None:
+            logging.warn("register-teardown has no tasklist, skipping")
+            return
+        tasklist = tasklists_env.get(tasklist_name)
+        if tasklist is None:
+            raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name,))
+        logging.info("Registering teardown for '%s' on '%s'", tasklist_name, targets_def)
+        self.teardowns.append((targets_def, tasklist))
+
+    @asyncio.coroutine
+    def _step_loop(self, step_xml, tasklists_env):
+        num_repeat_str = step_xml.get("repeat")
+        if num_repeat_str is not None:
+            try:
+                num_repeat = int(num_repeat_str)
+            except ValueError:
+                logging.error("counted loop has malformed attribute iterations (%s), skipping", num_repeat_str)
+                return
+            self.schedule_loop_counted(step_xml, tasklists_env, num_repeat)
+            return
+        duration = step_xml.get("duration")
+        if duration is not None:
+            deadline = time.time() + isodate.parse_duration(duration).total_seconds()
+            self.schedule_loop_until(step_xml, tasklists_env, deadline)
+            return
+        raise Exception("not implemented")
+
+    _step_table = {
+            'step': _step_tasklist,
+            'register-teardown': _step_teardown,
+            'synchronize': _step_synchronize,
+            'loop': _step_loop,
+    }
+
+
+
+class Testbed:
+    def __init__(self, targets_xml, settings):
+        self.batch = settings.batch
+        self.ssh_cooldown = settings.ssh_cooldown
+        self.logroot_dir = settings.logroot_dir
+        self.nodes = {}
+        self.groups = {}
+        self.settings = settings
+        for el in targets_xml:
+            self._process_declaration(el)
+
+        self.ec = ExecutionContext(self)
+
+        self.teardowns = []
+
+        # counter for sequential numbering of task runs
+        self.run_counter = 0
+
+        self.ssh_cooldown_lock = asyncio.Lock()
+        self.ssh_parallel_sema = asyncio.Semaphore(settings.ssh_parallelism)
+
+    @asyncio.coroutine
+    def ssh_acquire(self):
+        yield from self.ssh_parallel_sema.acquire()
+        if self.ssh_cooldown is not None:
+            yield from self.ssh_cooldown_lock.acquire()
+            # as soon as we get the lock,
+            # we schedule a function that releases it
+            # after the cooldown period.
+            loop = asyncio.get_event_loop()
+            loop.call_later(
+                    self.ssh_cooldown,
+                    lambda: self.ssh_cooldown_lock.release())
+
+    @asyncio.coroutine
+    def run_teardowns(self, tasklists_env):
+        try:
+            for target, tasklist in self.teardowns:
+                self.schedule_tasklist(target, tasklist, tasklists_env)
+                yield from self.join()
+        except ExperimentExecutionError as e:
+            logging.error("Error during teardown:  %s" % (e.message))
+
+    def ssh_release(self):
+        # Note that the cooldown lock will
+        # be released by a timer.
+        self.ssh_parallel_sema.release()
+
+    @asyncio.coroutine
+    def cancel_pending(self):
+        yield from self.ec.cancel_pending()
 
     def _process_group(self, els):
         members = []
@@ -312,94 +422,12 @@ class Testbed:
 
         return target_nodes
 
-    def schedule_tasklist(self, target_name, tasklist_xml, tasklists_env, background):
-        target_nodes = self._resolve_target(target_name)
-        for node in target_nodes:
-            coro = node.run_tasklist(tasklist_xml, tasklists_env)
-            task = asyncio.async(coro)
-            task.gplmt_background = background
-            self.tasks.append(task)
-
-    def schedule_loop(self, target_name, loop_xml, tasklists_env):
-        target_nodes = self._resolve_target(target_name)
-        coro = node.run_loop(target_name, loop_xml, tasklists_env)
-        task = asyncio.async(coro)
-        task.gplmt_background = False
-            self.tasks.append(task)
-
-    def run_loop(self, loop_xml, tasklists_env):
-        saved_tasks = self.tasks
-        # XXX: create new execution context to 
-        pass
-
+    @asyncio.coroutine
     def run_step(self, step_xml, tasklists_env):
-        if step_xml.tag not in self._step_table:
-            raise ExperimentSyntaxError("Invalid step '%s'" % (step_xml.tag,))
-        step_method = self._step_table[step_xml.tag]
-        step_method(self, step_xml, tasklists_env)
+        yield from self.ec.run_step(step_xml, tasklists_env)
 
-    def _step_synchronize(self, step_xml, tasklists_env):
-        # XXX: only join on targets node if given in the element
-        targets = None
-        targets_str = step_xml.get('targets')
-        if targets_str is not None:
-            targets = self._resolve_target(target_str)
-        self.join(targets)
-
-    def _step_tasklist(self, step_xml, tasklists_env):
-        targets_def = step_xml.get("targets")
-        if targets_def is None:
-            logging.warn("step has no targets, skipping")
-            return
-        tasklist_name = step_xml.get("tasklist")
-        if tasklist_name is None:
-            logging.warn("step has no tasklist, skipping")
-            return
-        tasklist = tasklists_env.get(tasklist_name)
-        if tasklist is None:
-            raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name,))
-        background = False
-        bg_str = step_xml.get('background')
-        if bg_str is not None and bg_str.lower() == 'true':
-            background = True
-        self.schedule_tasklist(targets_def, tasklist, tasklists_env, background)
-
-    def _step_teardown(self, step_xml, tasklists_env):
-        targets_def = step_xml.get("targets")
-        if targets_def is None:
-            logging.warn("register-teardown has no targets, skipping")
-            return
-        tasklist_name = step_xml.get("tasklist")
-        if tasklist_name is None:
-            logging.warn("register-teardown has no tasklist, skipping")
-            return
-        tasklist = tasklists_env.get(tasklist_name)
-        if tasklist is None:
-            raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name,))
-        logging.info("Registering teardown for '%s' on '%s'", tasklist_name, targets_def)
-        self.teardowns.append((targets_def, tasklist))
-
-    def _step_loop_counted(self, step_xml):
-        num_iter_attr = child.get("iterations")
-        if num_iter_attr is None:
-            logging.error("counted loop is missing attribute iterations, skipping")
-            return
-        try:
-            num_iter = int(num_iter_attr)
-        except ValueError:
-            logging.error("counted loop has malformed attribute iterations (%s), skipping", num_iter_attr)
-            return
-        logging.info("Starting counted loop")
-        for x in range(num_iter):
-            run_steps(list(child))
-            testbed.join()
-        logging.info("Done with counted loop")
-
-    _step_table = {
-            'step': _step_tasklist,
-            'register-teardown': _step_teardown,
-            'synchronize': _step_synchronize,
-            }
+    def join(self, targets=None):
+        yield from self.ec.join(targets)
 
 
 def find_text(node, query):
@@ -849,7 +877,6 @@ def establish_names(el):
             element.set('name', '_anon' + str(counter))
             counter += 1
     # XXX: check for uniqueness
-
 
 
 def augment_experiment(experiment, extension, prefix=None):
