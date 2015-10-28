@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <experiment>
   
-  <description>Demonstration of loop feature</description>
+  <description>Demonstration file includes.</description>
 
-  <include file="include/targets_local3.xml" />
+  <include file="include/targets_local3.xml" prefix="tl3" />
+  <include file="include/hello_world.xml" prefix="hw" />
 
-  <include file="include/hello_world.xml" />
-
+  <targets />
+  <tasklists />
 
   <steps>
-    <start-tasklist ref="hello-world" targets="all-loc" />
+    <step tasklist="hw.hello-world" targets="tl3.all-loc" />
   </steps>
 
 </experiment>

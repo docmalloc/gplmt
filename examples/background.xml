@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Hello World in GPLMT</description>
+
+  <targets>
+    <target name="local" type="local" />
+  </targets>
+
+  <tasklists>
+    <tasklist name="hello-world">
+      <run>echo Hello World</run>
+    </tasklist>
+    <tasklist name="sleep">
+      <run>sleep 3600</run>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <step tasklist="hello-world" targets="local" />
+    <step tasklist="sleep" targets="local" background='true' />
+  </steps>
+</experiment>

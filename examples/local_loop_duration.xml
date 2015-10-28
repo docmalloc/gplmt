@@ -14,7 +14,7 @@
   </tasklists>
 
   <steps>
-    <loop repeat="5">
+    <loop duration="PT10S">
       <step tasklist="loopbody" targets="mynode" />
     </loop>
   </steps>

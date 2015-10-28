@@ -15,13 +15,13 @@
     <tasklist name="my-put">
       <put>
         <source>myfile</source>
-        <destination>myfile</destination>
+        <destination>myfolder/myfile</destination>
       </put>
     </tasklist>
     <tasklist name="my-get">
       <get>
         <source>myfile</source>
-        <destination>myfile_out</destination>
+        <destination>my_get_folder/myfile_out</destination>
       </get>
     </tasklist>
   </tasklists>

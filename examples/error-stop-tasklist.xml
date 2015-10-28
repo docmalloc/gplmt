@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Hello World in GPLMT</description>
+
+  <targets>
+    <target name="local" type="local" />
+  </targets>
+
+  <tasklists>
+    <tasklist name="tl1" on-error="stop-tasklist">
+      <fail />
+      <run>echo "This command should not run (after fail)"</run>
+    </tasklist>
+    <tasklist name="tl2">
+      <run>echo "This command should run"</run>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <step tasklist="tl1" targets="local" />
+    <synchronize />
+    <step tasklist="tl2" targets="local" />
+  </steps>
+</experiment>

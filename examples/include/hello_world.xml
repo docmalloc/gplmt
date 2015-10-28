@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<tasklist name="hello-world">
-  <run>
-    <command>echo Hello World</command>
-  </run>
-</tasklist>
+<experiment>
+  <description>example for a very, very simple tasklist library.</description>
+  
+  <!-- targets element still required for validity -->
+  <targets />
+
+  <tasklists>
+    <tasklist name="hello-world">
+      <run>echo Hello World</run>
+    </tasklist>
+  </tasklists>
+</experiment>

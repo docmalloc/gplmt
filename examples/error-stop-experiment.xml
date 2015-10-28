@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Hello World in GPLMT</description>
+
+  <targets>
+    <target name="local" type="local" />
+  </targets>
+
+  <tasklists>
+    <tasklist name="clean1" cleanup="true">
+      <run>echo "This is the cleanup"</run>
+    </tasklist>
+    <tasklist name="tl1" on-error="stop-experiment" cleanup="clean1">
+      <fail />
+      <run>echo "This command should not run (after fail)"</run>
+    </tasklist>
+    <tasklist name="tl2">
+      <run>echo "This command should not run (in 2nd tasklist)"</run>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <step tasklist="tl1" targets="local" />
+    <synchronize />
+    <step tasklist="tl2" targets="local" />
+  </steps>
+</experiment>

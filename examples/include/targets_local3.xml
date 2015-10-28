@@ -1,5 +1,13 @@
-<target name="all-loc" type="group">
-  <target name="loc1" type="local" />
-  <target name="loc2" type="local" />
-  <target name="loc3" type="local" />
-</target>
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  <description>Example for a very, very simple library of targets.</description>
+  <targets>
+    <target name="all-loc" type="group">
+      <target name="loc1" type="local" />
+      <target name="loc2" type="local" />
+      <target name="loc3" type="local" />
+    </target>
+  </targets>
+  <!-- Tasklist element is still required for validity -->
+  <tasklists />
+</experiment>
