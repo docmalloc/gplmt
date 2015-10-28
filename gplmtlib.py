@@ -30,6 +30,7 @@ from concurrent.futures import FIRST_COMPLETED
 from lxml.builder import E
 from contextlib import contextmanager
 
+
 __all__ = [
     "Testbed",
     "Experiment",
@@ -45,6 +46,8 @@ class Experiment:
         self.settings = settings
         self.targets = self.experiment_xml.findall('/targets/target')
         self.steps = self.experiment_xml.find("steps")
+        if self.steps is None:
+            raise ExperimentSyntaxError("Element 'steps' missing.  Did you try to execute an extension library?")
         self.tasklists_env = {}
 
         for x in experiment_xml.xpath("/experiment/tasklists/tasklist[@name]"):
@@ -53,7 +56,8 @@ class Experiment:
     @classmethod
     def from_file(cls, filename, settings):
         try:
-            document = lxml.etree.parse(filename)
+            xml_parser = lxml.etree.XMLParser(remove_blank_text=True)
+            document = lxml.etree.parse(filename, parser=xml_parser)
         except OSError:
             raise ExperimentSetupError("Could not read experiment file\n")
 
@@ -63,8 +67,8 @@ class Experiment:
             print("Fatal: Root element must be 'experiment', not '%s'" % (root.tag,))
             sys.exit(1)
 
-        process_includes(document, parent_filename=filename)
         establish_names(document)
+        process_includes(document, parent_filename=filename)
         return Experiment(document, settings)
 
     def _run(self):
@@ -73,11 +77,16 @@ class Experiment:
         try:
             for step in self.steps:
                 testbed.run_step(step, self.tasklists_env)
-            testbed.join_all()
-        except ExperimentExecutionError as e:
-            logging.error("Experiment error: %s", e.message)
+            testbed.join()
+        except ExperimentSyntaxError as e:
+            logging.error("Syntax error: %s", e.message)
+        except StopExperimentException as e:
+            logging.error("Stop requested (%s)", e.scope)
 
         testbed.run_teardowns(self.tasklists_env)
+
+        # Take care of stuff that was aborted or background tasks
+        testbed.cancel_pending()
 
     def run(self):
         try:
@@ -88,8 +97,22 @@ class Experiment:
             loop.close()
 
 
+class ExecutionContext:
+    def __init__(self):
+        self.tasks = {}
+
+    @asyncio.coroutine
+    def join(self, targets=None):
+        pass
+
+    def schedule_loop(...):
+        pass
+
+    def schedule_tasklist(...):
+        pass
+
+
 class Testbed:
-    # XXX: maybe pass args object instead of single params
     def __init__(self, targets_xml, settings):
         self.batch = settings.batch
         self.ssh_cooldown = settings.ssh_cooldown
@@ -126,8 +149,8 @@ class Testbed:
     def run_teardowns(self, tasklists_env):
         try:
             for target, tasklist in self.teardowns:
-                self.schedule(target, tasklist, tasklists_env)
-                self.join_all()
+                self.schedule_tasklist(target, tasklist, tasklists_env)
+                self.join()
         except ExperimentExecutionError as e:
             logging.error("Error during teardown:  %s" % (e.message))
 
@@ -136,25 +159,60 @@ class Testbed:
         # be released by a timer.
         self.ssh_parallel_sema.release()
 
-    def join_all(self):
+    def join(self, targets=None):
+        """ Block on pending tasks until
+        complete or requested to stop by an exception"""
         if not len(self.tasks):
             logging.info("Synchronized nodes (no tasks)")
             return
         loop = asyncio.get_event_loop()
-        join_coro = asyncio.wait(self.tasks)
-        done, pending = loop.run_until_complete(join_coro)
-        for task in done:
-            # throw potential exceptions
-            task.result()
+        while self.tasks:
+            join_coro = asyncio.wait(self.tasks, return_when=FIRST_COMPLETED)
+            try:
+                done, ts = loop.run_until_complete(join_coro)
+                self.tasks = list(ts)
+                del ts
+                logging.info('%s tasks done, %s task pending', len(done), len(self.tasks))
+                for task in done:
+                    # throw potential exceptions
+                    task.result()
+            except StopExperimentException as e:
+                logging.info("got stop experiment exception")
+                if e.scope in ('stop-tasklist', 'stop-step'):
+                    logging.info("stopped execution (%s)", e.scope)
+                elif e.scope == 'stop-experiment':
+                    logging.info("stopping experiment")
+                    raise
+            # We can break if no pending
+            # tasks belong to the targets we join on.
+            if targets is not None:
+                done = True
+                for p in self.tasks:
+                    if p.gplmt_node in targets:
+                        done = False
+                if done:
+                    break
+            # We can also stop if we only wait on things from
+            # background tasks.
+            done = True
+            for p in self.tasks:
+                if not p.gplmt_background:
+                    done = False
+            if done:
+                break
+            # XXX: implement
         logging.info("Synchronized nodes")
 
-    def join_one(self):
-        if not len(self.tasks):
-            logging.info("Synchronized nodes (no tasks)")
+
+    def cancel_pending(self):
+        """Cancel all pending tasks"""
+        if not self.tasks:
             return
         loop = asyncio.get_event_loop()
-        done, pending = loop.run_until_complete(asyncio.wait(self.tasks, return_when=FIRST_COMPLETED))
-        logging.info("Synchronized nodes")
+        for p in self.tasks:
+            p.cancel()
+        join_coro = asyncio.wait(self.tasks)
+        done, self.tasks = loop.run_until_complete(join_coro)
 
     def _process_group(self, els):
         members = []
@@ -254,12 +312,25 @@ class Testbed:
 
         return target_nodes
 
-    def schedule(self, target_name, tasklist_xml, tasklists_env):
+    def schedule_tasklist(self, target_name, tasklist_xml, tasklists_env, background):
         target_nodes = self._resolve_target(target_name)
         for node in target_nodes:
-            coro = node.run(tasklist_xml, self, tasklists_env)
+            coro = node.run_tasklist(tasklist_xml, tasklists_env)
             task = asyncio.async(coro)
+            task.gplmt_background = background
             self.tasks.append(task)
+
+    def schedule_loop(self, target_name, loop_xml, tasklists_env):
+        target_nodes = self._resolve_target(target_name)
+        coro = node.run_loop(target_name, loop_xml, tasklists_env)
+        task = asyncio.async(coro)
+        task.gplmt_background = False
+            self.tasks.append(task)
+
+    def run_loop(self, loop_xml, tasklists_env):
+        saved_tasks = self.tasks
+        # XXX: create new execution context to 
+        pass
 
     def run_step(self, step_xml, tasklists_env):
         if step_xml.tag not in self._step_table:
@@ -268,7 +339,12 @@ class Testbed:
         step_method(self, step_xml, tasklists_env)
 
     def _step_synchronize(self, step_xml, tasklists_env):
-        self.join_all()
+        # XXX: only join on targets node if given in the element
+        targets = None
+        targets_str = step_xml.get('targets')
+        if targets_str is not None:
+            targets = self._resolve_target(target_str)
+        self.join(targets)
 
     def _step_tasklist(self, step_xml, tasklists_env):
         targets_def = step_xml.get("targets")
@@ -282,7 +358,11 @@ class Testbed:
         tasklist = tasklists_env.get(tasklist_name)
         if tasklist is None:
             raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name,))
-        self.schedule(targets_def, tasklist, tasklists_env)
+        background = False
+        bg_str = step_xml.get('background')
+        if bg_str is not None and bg_str.lower() == 'true':
+            background = True
+        self.schedule_tasklist(targets_def, tasklist, tasklists_env, background)
 
     def _step_teardown(self, step_xml, tasklists_env):
         targets_def = step_xml.get("targets")
@@ -312,7 +392,7 @@ class Testbed:
         logging.info("Starting counted loop")
         for x in range(num_iter):
             run_steps(list(child))
-            testbed.join_all()
+            testbed.join()
         logging.info("Done with counted loop")
 
     _step_table = {
@@ -340,6 +420,14 @@ def get_delay(node, prefix):
         return diff.total_seconds()
     return None
 
+
+class ExpectSuccessPolicy:
+    def __init__(self, command):
+        self.command = command
+
+    def check_status(self, status):
+        if status != 0:
+            raise ExperimentExecutionError("Unexpected status '%s'" % (status,))
 
 
 class RunTaskPolicy:
@@ -370,6 +458,7 @@ class RunTaskPolicy:
             yield None
             return
         outfilename = os.path.join(
+                # XXX: also include tasklist name
                 self._mklogdir(),
                 "%s.%s.out" % (self.task_name, self.node.testbed.run_counter))
         with open(outfilename, "w") as f:
@@ -383,7 +472,7 @@ class RunTaskPolicy:
         # XXX: better error message
         logging.error("Unexpected status")
         raise ExperimentExecutionError("Unexpected status")
-    
+
     @contextmanager
     def open_stderr(self):
         if self.node.testbed.logroot_dir is None:
@@ -424,17 +513,43 @@ class Node:
             yield from self._run_task(task_xml, testbed, tasklists_env)
 
     @asyncio.coroutine
-    def run(self, tasklist_xml, testbed, tasklists_env, memo=None, noclean=False):
-        list_name = tasklist_xml.get('name', '(unnamed)')
-        logging.info("running tasklist '%s'", list_name)
-        # actual tasks, with declarations stripped
-        actual_tasks = []
+    def run_cleanup(self, tasklist_xml, tasklists_env):
         cleanup_task = None
         cleanup_name = tasklist_xml.get('cleanup')
         if cleanup_name is not None:
             cleanup_task = tasklists_env.get(cleanup_name)
             if cleanup_task is None:
                 raise ExperimentSyntaxError("cleanup task %s not found\n" % (cleanup_name,))
+        if cleanup_task is None:
+            return
+        coro = self._run_list(cleanup_task, self.testbed, tasklists_env)
+        try:
+            yield from asyncio.async(coro)
+        except asyncio.TimeoutError:
+            # XXX: be more verbose!
+            logging.warning(
+                    "Cleanup tasklist %s on node %s timed out",
+                    cleanup_name,
+                    self.name)
+        except StopExperimentException as e:
+            logging.warning(
+                    "Cleanup tasklist %s on node %s stopped (%s)",
+                    cleanup_name,
+                    self.name,
+                    e.scope)
+        except ExperimentExecutionError as e:
+            logging.warning(
+                    "Cleanup tasklist %s on node %s failed (%s)",
+                    cleanup_name,
+                    self.name,
+                    e.message)
+
+
+    @asyncio.coroutine
+    def run_tasklist(self, tasklist_xml, tasklists_env):
+        list_name = tasklist_xml.get('name', '(unnamed)')
+        logging.info("running tasklist '%s'", list_name)
+        # actual tasks, with declarations stripped
         error_policy = tasklist_xml.get('on-error')
         if error_policy is None:
             error_policy = 'stop-tasklist'
@@ -442,7 +557,7 @@ class Node:
         timeout = None
         if timeout_str is not None:
             timeout = isodate.parse_duration(timeout_str).total_seconds()
-        coro = self._run_list(tasklist_xml, testbed, tasklists_env)
+        coro = self._run_list(tasklist_xml, self.testbed, tasklists_env)
         try:
             logging.info(
                     "Running tasklist %s with timeout of %s.",
@@ -454,23 +569,19 @@ class Node:
                     "Tasklist %s on node %s timed out",
                     list_name,
                     self.name)
-        except ExperimentExecutionError:
-            logging.error("Tasklist execution (%s on %s) raised exception", list_name, self.name)
-            if error_policy == 'panic':
-                # XXX: WRONG: Give up without cleaning up
+            # XXX: cleanup!
+        except StopExperimentException as e:
+            if e.scope == 'stop-experiment':
                 raise
-            if cleanup_task is not None and not noclean:
-                logging.error("Experiment execution failed, but cleaning up first")
-                # Allow cleanup task to run, but without recursive cleaning.
-                yield from self.run(cleanup_task, testbed, tasklists_env, noclean=True)
-            if error_policy == 'stop-tasklist':
-                pass
-            elif error_policy == 'stop-experiment':
-                raise
-
-        if cleanup_task is not None and not noclean:
-            # Allow cleanup task to run, but without recursive cleaning.
-            yield from self.run(cleanup_task, testbed, tasklists_env, noclean=True)
+            # otherwise, we ignore the exception
+        except ExperimentExecutionError as e:
+            logging.error("Tasklist execution (%s on %s) raised exception (%s)", list_name, self.name, e.message)
+            if error_policy in ('stop-experiment', 'stop-step', 'stop-tasklist'):
+                yield from self.run_cleanup(tasklist_xml, tasklists_env)
+                raise StopExperimentException(error_policy)
+            else:
+                raise ExperimentSyntaxError("Unexpected error policy '%s'" % (error_policy,))
+        yield from self.run_cleanup(tasklist_xml, tasklists_env)
 
     @asyncio.coroutine
     def _run_task_run(self, task_xml):
@@ -491,17 +602,33 @@ class Node:
         if task_xml.tag == 'get':
             source = find_text(task_xml, 'source')
             destination = find_text(task_xml, 'destination')
+            # XXX: Also replace other variables
+            source = source.replace("GPLMT_TARGET", self.name)
+            destination = destination.replace("GPLMT_TARGET", self.name)
             yield from self.get(source, destination)
             return
         if task_xml.tag == 'put':
             source = find_text(task_xml, 'source')
             destination = find_text(task_xml, 'destination')
+            # XXX: Also replace other variables
+            source = source.replace("GPLMT_TARGET", self.name)
+            destination = destination.replace("GPLMT_TARGET", self.name)
             yield from self.put(source, destination)
             return
         if task_xml.tag == 'sequence':
             for child_task in task:
                 yield from self._run_task(child_task)
             return
+        if task_xml.tag == 'fail':
+            raise ExperimentExecutionError("user-requested fail")
+        if task_xml.tag == 'call':
+            tl = task_xml.get('tasklist')
+            if tl is None:
+                raise ExperimentSyntaxError("no tasklist name in 'call'")
+            tasklist_xml = tasklists_env.get(tl)
+            if tasklist_xml is None:
+                raise ExperimentSyntaxError("Tasklist '%s' not defined" % (tl,))
+            yield from self.run_tasklist(tasklist_xml, tasklists_env)
         if task_xml.tag == 'parallel':
             parallel_tasks = []
             for child_task in task_xml:
@@ -537,7 +664,7 @@ class LocalNode(Node):
 
     @asyncio.coroutine
     def execute(self, pol, stderr, stdout):
-        logging.info("Executing command '%s'", pol.command)
+        logging.info("Locally executing command '%s'", pol.command)
         proc = yield from asyncio.create_subprocess_shell(
                 pol.command, stdout=stdout, stderr=stderr, env=self.env)
         ret = yield from proc.wait()
@@ -606,12 +733,12 @@ class SSHNode(Node):
         return os.path.expanduser(p)
 
     @asyncio.coroutine
-    def execute(self, pol, stdout, stderr):
+    def execute(self, pol, stdout=None, stderr=None):
         yield from self.testbed.ssh_acquire()
 
         cmd = pol.command
 
-        logging.info("Executing command '%s'", pol.command)
+        logging.info("Executing command '%s' on '%s'", pol.command, self.name)
 
         # Add code to command to set environment variables
         # on the target host.
@@ -636,8 +763,9 @@ class SSHNode(Node):
         proc = yield from asyncio.create_subprocess_exec(
                 *argv,
                 stdout=stdout, stderr=stderr)
+        logging.info("waiting ...")
         ret = yield from proc.wait()
-        logging.info("SSH command terminated")
+        logging.info("SSH command terminated with status %s", ret)
         pol.check_status(ret)
 
         self.testbed.ssh_release()
@@ -671,6 +799,11 @@ class SSHNode(Node):
         else:
             scp_source = './' + source
         scp_destination = '%s:%s' % (self.target, destination)
+        pol = ExpectSuccessPolicy("mkdir -p $(dirname $(readlink -fm %s))" % (shlex.quote(destination)))
+        #pol = ExpectSuccessPolicy("ls -la")
+        print("creating directory")
+        yield from self.execute(pol)
+        print("created directory")
         yield from self.scp_copy(scp_source, scp_destination)
 
     @asyncio.coroutine
@@ -680,6 +813,8 @@ class SSHNode(Node):
             scp_destination = destination
         else:
             scp_destination = './' + destination
+        # Ensure that target directory exists
+        os.makedirs(os.path.dirname(os.path.realpath(destination)), exist_ok=True)
         yield from self.scp_copy(scp_source, scp_destination)
 
 
@@ -697,33 +832,13 @@ class ExperimentSetupError(Exception):
     def __init__(self, message):
         self.message = message
 
-
-def replace(element, replacement):
-    parent = element.getparent()
-    if parent is None:
-        raise ValueError("Can't replace element without parent")
-    for idx, child in enumerate(parent):
-        if child is element:
-            child_idx = idx
-            break
-    else:
-        raise Exception("concurrent modification")
-    parent.remove(element)
-    parent.insert(child_idx, replacement)
-
-
-def prefix_names(el, prefix):
-    for element in el.iter():
-        if 'name' not in el:
-            continue
-        if element.tag not in ('target', 'tasklist', 'run'):
-            continue
-        element['name'] = prefix + element['name']
+class StopExperimentException(Exception):
+    def __init__(self, scope):
+        self.scope = scope
 
 
 def establish_names(el):
-    """Make sure that every interesting
-    element has a name"""
+    """Make sure that should have a name has a unique name"""
     counter = 0
     for element in el.iter():
         if element.tag not in ('run',):
@@ -733,15 +848,55 @@ def establish_names(el):
             # We do have .sourceline available sometimes
             element.set('name', '_anon' + str(counter))
             counter += 1
+    # XXX: check for uniqueness
 
 
-def process_includes(doc, parent_filename, env=None, memo=None):
-    includes = doc.findall('//include')
+
+def augment_experiment(experiment, extension, prefix=None):
+    # XXX: prefixing is not complete,
+    # all references to tasklists / targets within the
+    # extension experiment should also be prefixed.
+
+    res = experiment.xpath('/experiment/targets')
+    if not res:
+        raise ExperimentSyntaxError("Element 'targets' missing in experiment")
+    targets = res[0]
+    res = extension.xpath('/experiment/targets')
+    if not res:
+        raise ExperimentSyntaxError("Element 'targets' missing in experiment")
+    ext_targets = res[0]
+    if prefix is not None:
+        for t in ext_targets:
+            t.set('name', "{0}.{1}".format(prefix, t.get('name', '_unknown')))
+    targets.extend(list(ext_targets))
+
+    del targets, ext_targets
+
+    res = experiment.xpath('/experiment/tasklists')
+    if not res:
+        raise ExperimentSyntaxError("Element 'tasklists' missing in experiment")
+    tasklists = res[0]
+    res = extension.xpath('/experiment/tasklists')
+    if not res:
+        raise ExperimentSyntaxError("Element 'tasklists' missing in experiment")
+    ext_tasklists = res[0]
+    if prefix is not None:
+        for t in ext_tasklists:
+            t.set('name', "{0}.{1}".format(prefix, t.get('name', '_unknown')))
+    tasklists.extend(list(ext_tasklists))
+
+    if extension.find('/experiment/steps'):
+        logging.warn("Extension tasklist has 'steps'.  These steps will not be executed")
+
+
+
+def process_includes(experiment_xml, parent_filename, env=None, memo=None):
+    includes = experiment_xml.xpath('/experiment/include')
     for el in includes:
         filename = el.get('file')
         if filename is None:
-            raise ExperimentSyntaxError("Filename missing in include")
-        # XXX: Implement defaulting, shell style.
+            raise ExperimentSyntaxError("Attribute 'file' missing in include")
+        # XXX: Implement defaulting, shell style?
         filename = os.path.expandvars(filename)
         # Search relative paths relative to parent document
         if not os.path.isabs(filename):
@@ -749,14 +904,16 @@ def process_includes(doc, parent_filename, env=None, memo=None):
             filename = os.path.join(parent_dir, filename)
         filename = os.path.realpath(filename)
         if memo is not None and filename in memo:
-            raise ExperimentSyntaxError("recursive include")
+            raise ExperimentSyntaxError("recursive include detected")
         xml_parser = lxml.etree.XMLParser(remove_blank_text=True)
-        doc = lxml.etree.parse(filename, parser=xml_parser)
-        # XXX: Check that including this element here
-        # preserves document validity.
-        # XXX: Handle namespace prefixing
+        # XXX: we only try one filename, but we may want to specify include
+        # locations, like compilers do.
+        extension_xml = lxml.etree.parse(filename, parser=xml_parser)
+        # XXX: some validation wouldn't hurt here
         new_memo = {filename}
         if memo is not None:
             new_memo.update(memo)
-        process_includes(doc, filename, memo=new_memo)
-        replace(el, doc.getroot())
+        establish_names(extension_xml)
+        process_includes(extension_xml, filename, memo=new_memo)
+        prefix = el.get('prefix')
+        augment_experiment(experiment_xml, extension_xml, prefix)

@@ -38,6 +38,7 @@ parser.add_argument(
     "--ssh-cooldown",
     default=1.0,
     help="Number of seconds to wait between ssh connections")
+# Token bucket
 parser.add_argument(
     "--ssh-parallelism",
     default=30,
@@ -46,11 +47,9 @@ parser.add_argument(
 args = parser.parse_args()
 
 logging.basicConfig(
-            format='%(asctime)s %(levelname)s %(message)s',
+            format='%(asctime)s %(module)s %(levelname)s %(message)s',
             datefmt='%Y-%m-%d %T %Z',
             level=logging.INFO)
-
-
 
 experiment = Experiment.from_file(args.experiment_file, settings=args)
 experiment.run()
