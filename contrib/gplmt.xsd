@@ -153,9 +153,9 @@
       <xs:attribute name="on-error">
         <xs:simpleType>
           <xs:restriction base="xs:token">
-            <xs:enumeration value="panic"/>
-            <xs:enumeration value="abort-tasklist"/>
-            <xs:enumeration value="abort-step"/>
+            <xs:enumeration value="stop-experiment"/>
+            <xs:enumeration value="stop-tasklist"/>
+            <xs:enumeration value="stop-step"/>
           </xs:restriction>
         </xs:simpleType>
       </xs:attribute>
@@ -166,6 +166,14 @@
   <xs:element name="call" substitutionGroup="task">
     <xs:complexType>
       <xs:attribute name="tasklist" use="required"/>
+      <xs:attribute name="expected-status">
+        <xs:simpleType>
+          <xs:restriction base="xs:token">
+            <xs:enumeration value="0"/>
+            <xs:enumeration value="1"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
     </xs:complexType>
   </xs:element>
   <xs:element name="task" abstract="true"/>
@@ -178,7 +186,6 @@
       <xs:element minOccurs="0" maxOccurs="unbounded" ref="task"/>
     </xs:sequence>
     <xs:attribute name="name"/>
-    <xs:attribute name="enabled" type="xs:boolean"/>
   </xs:complexType>
   <xs:attributeGroup name="timeout">
     <xs:attribute name="timeout" use="required" type="xs:duration"/>
@@ -213,6 +220,14 @@
       <xs:attributeGroup ref="stop_time"/>
       <xs:attribute name="targets" use="required"/>
       <xs:attribute name="tasklist" use="required"/>
+      <xs:attribute name="background" use="required">
+        <xs:simpleType>
+          <xs:restriction base="xs:token">
+            <xs:enumeration value="true"/>
+            <xs:enumeration value="false"/>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:attribute>
     </xs:complexType>
   </xs:element>
   <xs:element name="repeat">

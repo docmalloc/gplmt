@@ -120,9 +120,9 @@
       <optional>
         <attribute name="on-error">
           <choice>
-            <value>panic</value>
-            <value>abort-tasklist</value>
-            <value>abort-step</value>
+            <value>stop-experiment</value>
+            <value>stop-tasklist</value>
+            <value>stop-step</value>
           </choice>
         </attribute>
       </optional>
@@ -147,6 +147,14 @@
       <attribute name="tasklist">
         <ref name="tasklist-name"/>
       </attribute>
+      <optional>
+        <attribute name="expected-status">
+          <choice>
+            <value>0</value>
+            <value>1</value>
+          </choice>
+        </attribute>
+      </optional>
     </element>
   </define>
   <define name="task">
@@ -182,11 +190,6 @@
   <define name="sublist_body">
     <optional>
       <attribute name="name"/>
-    </optional>
-    <optional>
-      <attribute name="enabled">
-        <data type="boolean"/>
-      </attribute>
     </optional>
     <zeroOrMore>
       <ref name="task"/>
@@ -229,6 +232,12 @@
         </optional>
         <attribute name="targets"/>
         <attribute name="tasklist"/>
+        <attribute name="background">
+          <choice>
+            <value>true</value>
+            <value>false</value>
+          </choice>
+        </attribute>
       </element>
       <element name="repeat">
         <optional>

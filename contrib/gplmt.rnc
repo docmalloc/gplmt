@@ -12,8 +12,12 @@ experiment = element experiment {
   element steps { step* }
 }
 
+# Expandable paths contain
+# variables that will be expanded.
+expandable_path = text
+
 \include = element include {
-  attribute file { text },
+  attribute file { expandable_path },
   attribute prefix { text}
 }
 
@@ -52,18 +56,21 @@ tasklist-name = text
 
 tasklist = element tasklist {
   attribute name { text },
-  attribute on-error { ( "panic" | "abort-tasklist" | "abort-step" ) }?,
+  attribute on-error { ( "stop-experiment" | "stop-tasklist" | "stop-step" ) }?,
   attribute cleanup { tasklist-name }?,
   attribute timeout { xsd:duration }?,
   (seq | par)
 }
 
 call = element call {
-  attribute tasklist { tasklist-name }
+  attribute tasklist { tasklist-name },
+  attribute expected-status { "0" | "1" }?
 }
 
-task = call | seq | par | run | put | get
+task = call | seq | par | run | put | get | fail
 
+
+fail = element fail { attribute status { text } }
 seq = element seq { sublist_body }
 par = element par { sublist_body }
 
@@ -72,7 +79,6 @@ get = element get { copy_body }
 
 sublist_body =
   attribute name { text }?,
-  attribute enabled { xsd:boolean }?,
   task*
 
 timeout = attribute timeout { xsd:duration }
@@ -92,7 +98,8 @@ step = (
     start_time?,
     stop_time?,
     attribute targets { text },
-    attribute tasklist { text }
+    attribute tasklist { text },
+    attribute background { "true" | "false" }
   } |
   element repeat {
     attribute iterations { xsd:integer }?,
