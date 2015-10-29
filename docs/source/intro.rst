@@ -121,6 +121,8 @@ Targets are defined in the mandatory `targets` element of the experiment descrip
     <!-- ... -->
   </experiment>
 
+The name of a target must be unique within the experiment.
+
 
 Local Targets
 ~~~~~~~~~~~~~
@@ -195,20 +197,75 @@ to the value of `V` on the GPLMT execution host, and `V2` is set to the constant
 Defining Tasklists
 ------------------
 
+Tasklists must have a unique name, just as targets.
+
+A tasklist consists of a primitive task (`run`, `put`, `get`) or
+a composition element (`seq` or `par`).
+
 Running Commands
 ~~~~~~~~~~~~~~~~
+
+Commands are interpreted by a shell on the target host.
+
+Per default, the termination of a command is always interpreted as success,
+regarless of the status of the process that was executed.  With the `expected-status`
+attribute, it is possible trigger an error if the command exits with a different status.
+
+.. code-block:: xml
+  
+  <run expected-status="0">some-program --with-argument=$FOO</run>
+
+
 
 File Transfers
 ~~~~~~~~~~~~~~
 
+.. code-block:: xml
+  
+  <put source="local-filename" destination="remote-filename" />
+
+.. code-block:: xml
+  
+  <get source="remote-filename" destination="local-filename" />
+
+All parent directories will be created if they do not exist yet.
+
 Calling other tasklists
 ~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: xml
+  
+  <call tasklist="some-tasklist" />
 
 Parallel and Sequential Composition
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. code-block:: xml
+  
+  <par>
+    <!-- Sequence of other tasks -->
+  </par>
+
+.. code-block:: xml
+  
+  <seq>
+    <!-- Sequence of other tasks -->
+  </seq>
+
 Cleanups and Error Handling
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Tasklists can specify other tasklists as a cleanup tasklist. Cleanup tasklists
+are always executed, even if the execution of another tasklist fails.
+
+What happens when a tasklist fails can be changed by specifying the `on-error` attribute.
+The possible values are:
+
+* `stop-tasklist`.  This is the default.  Execution of the current tasklist will stop.
+  If the current tasklist was executed with a `call` task, the caller tasklist will continue execution.
+* `stop-experiment`.  The whole experiment will be stopped.
+* `stop-step`.  The whole step will be aborted.  The difference to `stop-tasklist` is that
+  all callers of the tasklist are stopped as well.
 
 Defining the Execution Plan
 ---------------------------
