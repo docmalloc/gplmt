@@ -162,18 +162,21 @@ class ExecutionContext:
             coro = node.run_tasklist(tasklist_xml, tasklists_env)
             task = asyncio.async(coro)
             task.gplmt_background = background
+            task.gplmt_node = node
             self.tasks.append(task)
 
     def schedule_loop_counted(self, loop_xml, tasklists_env, repetitions):
         coro = self.run_loop_counted(loop_xml, tasklists_env, repetitions)
         task = asyncio.async(coro)
         task.gplmt_background = False
+        task.gplmt_node = []
         self.tasks.append(task)
 
     def schedule_loop_until(self, loop_xml, tasklists_env, deadline):
         coro = self.run_loop_until(loop_xml, tasklists_env, deadline)
         task = asyncio.async(coro)
         task.gplmt_background = False
+        task.gplmt_node = []
         self.tasks.append(task)
 
     @asyncio.coroutine
@@ -203,12 +206,11 @@ class ExecutionContext:
 
     @asyncio.coroutine
     def _step_synchronize(self, step_xml, tasklists_env):
-        # XXX: only join on targets node if given in the element
         targets = None
         targets_str = step_xml.get('targets')
         if targets_str is not None:
             targets = self.testbed._resolve_target(targets_str)
-        self.join(targets)
+        yield from self.join(targets)
 
     @asyncio.coroutine
     def _step_tasklist(self, step_xml, tasklists_env):
