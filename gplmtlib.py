@@ -207,7 +207,7 @@ class ExecutionContext:
         targets = None
         targets_str = step_xml.get('targets')
         if targets_str is not None:
-            targets = self._resolve_target(target_str)
+            targets = self.testbed._resolve_target(targets_str)
         self.join(targets)
 
     @asyncio.coroutine

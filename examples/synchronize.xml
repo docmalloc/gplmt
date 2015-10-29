@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Selective Synchronization in GPLMT</description>
+
+  <targets>
+    <target name="local1" type="local" />
+    <target name="local2" type="local" />
+  </targets>
+
+  <tasklists>
+    <tasklist name="hello-world">
+      <run>echo Hello World</run>
+    </tasklist>
+    <tasklist name="sleep">
+      <run>sleep 15</run>
+    </tasklist>
+    <tasklist name="done">
+      <run>echo Done!</run>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <step tasklist="hello-world" targets="local1" />
+    <step tasklist="sleep" targets="local2" />
+    <synchronize targets="local1" />
+    <step tasklist="done" targets="local1" />
+  </steps>
+</experiment>
