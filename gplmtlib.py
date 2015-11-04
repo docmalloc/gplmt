@@ -181,8 +181,6 @@ class ExecutionContext:
 
     @asyncio.coroutine
     def run_loop_counted(self, loop_xml, tasklists_env, repetitions):
-        print("running loop")
-        print(lxml.etree.tostring(loop_xml, pretty_print=True))
         nested_ec = ExecutionContext(self.testbed)
         for x in range(repetitions):
             for step in list(loop_xml):
@@ -245,7 +243,7 @@ class ExecutionContext:
         if tasklist is None:
             raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name,))
         logging.info("Registering teardown for '%s' on '%s'", tasklist_name, targets_def)
-        self.teardowns.append((targets_def, tasklist))
+        self.testbed.teardowns.append((targets_def, tasklist))
 
     @asyncio.coroutine
     def _step_loop(self, step_xml, tasklists_env):
@@ -312,7 +310,9 @@ class Testbed:
     def run_teardowns(self, tasklists_env):
         try:
             for target, tasklist in self.teardowns:
-                self.schedule_tasklist(target, tasklist, tasklists_env)
+                # run teardowns in the root execution context of
+                # the testbed
+                self.ec.schedule_tasklist(target, tasklist, tasklists_env, background=False)
                 yield from self.join()
         except ExperimentExecutionError as e:
             logging.error("Error during teardown:  %s" % (e.message))
@@ -632,17 +632,17 @@ class Node:
         if task_xml.tag == 'get':
             source = find_text(task_xml, 'source')
             destination = find_text(task_xml, 'destination')
-            # XXX: Also replace other variables
-            source = source.replace("GPLMT_TARGET", self.name)
-            destination = destination.replace("GPLMT_TARGET", self.name)
+            # XXX: Just replace all environment variables
+            source = source.replace("$GPLMT_TARGET", self.name)
+            destination = destination.replace("$GPLMT_TARGET", self.name)
             yield from self.get(source, destination)
             return
         if task_xml.tag == 'put':
             source = find_text(task_xml, 'source')
             destination = find_text(task_xml, 'destination')
-            # XXX: Also replace other variables
-            source = source.replace("GPLMT_TARGET", self.name)
-            destination = destination.replace("GPLMT_TARGET", self.name)
+            # XXX: Just replace all environment variables
+            source = source.replace("$GPLMT_TARGET", self.name)
+            destination = destination.replace("$GPLMT_TARGET", self.name)
             yield from self.put(source, destination)
             return
         if task_xml.tag == 'sequence':
@@ -830,10 +830,7 @@ class SSHNode(Node):
             scp_source = './' + source
         scp_destination = '%s:%s' % (self.target, destination)
         pol = ExpectSuccessPolicy("mkdir -p $(dirname $(readlink -fm %s))" % (shlex.quote(destination)))
-        #pol = ExpectSuccessPolicy("ls -la")
-        print("creating directory")
         yield from self.execute(pol)
-        print("created directory")
         yield from self.scp_copy(scp_source, scp_destination)
 
     @asyncio.coroutine
