@@ -30,9 +30,18 @@
       </element>
     </element>
   </define>
+  <!--
+    Expandable paths contain
+    variables that will be expanded.
+  -->
+  <define name="expandable_path">
+    <text/>
+  </define>
   <define name="include">
     <element name="include">
-      <attribute name="file"/>
+      <attribute name="file">
+        <ref name="expandable_path"/>
+      </attribute>
       <attribute name="prefix"/>
     </element>
   </define>
@@ -165,7 +174,13 @@
       <ref name="run"/>
       <ref name="put"/>
       <ref name="get"/>
+      <ref name="fail"/>
     </choice>
+  </define>
+  <define name="fail">
+    <element name="fail">
+      <attribute name="status"/>
+    </element>
   </define>
   <define name="seq">
     <element name="seq">
@@ -232,12 +247,14 @@
         </optional>
         <attribute name="targets"/>
         <attribute name="tasklist"/>
-        <attribute name="background">
-          <choice>
-            <value>true</value>
-            <value>false</value>
-          </choice>
-        </attribute>
+        <optional>
+          <attribute name="background">
+            <choice>
+              <value>true</value>
+              <value>false</value>
+            </choice>
+          </attribute>
+        </optional>
       </element>
       <element name="repeat">
         <optional>

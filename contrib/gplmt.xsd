@@ -29,6 +29,10 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="step"/>
     </xs:complexType>
   </xs:element>
+  <!--
+    Expandable paths contain
+    variables that will be expanded.
+  -->
   <xs:element name="include">
     <xs:complexType>
       <xs:attribute name="file" use="required"/>
@@ -177,6 +181,11 @@
     </xs:complexType>
   </xs:element>
   <xs:element name="task" abstract="true"/>
+  <xs:element name="fail" substitutionGroup="task">
+    <xs:complexType>
+      <xs:attribute name="status" use="required"/>
+    </xs:complexType>
+  </xs:element>
   <xs:element name="seq" substitutionGroup="task" type="sublist_body"/>
   <xs:element name="par" substitutionGroup="task" type="sublist_body"/>
   <xs:element name="put" substitutionGroup="task" type="copy_body"/>
@@ -220,7 +229,7 @@
       <xs:attributeGroup ref="stop_time"/>
       <xs:attribute name="targets" use="required"/>
       <xs:attribute name="tasklist" use="required"/>
-      <xs:attribute name="background" use="required">
+      <xs:attribute name="background">
         <xs:simpleType>
           <xs:restriction base="xs:token">
             <xs:enumeration value="true"/>

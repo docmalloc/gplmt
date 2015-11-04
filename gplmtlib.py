@@ -645,7 +645,7 @@ class Node:
             destination = destination.replace("$GPLMT_TARGET", self.name)
             yield from self.put(source, destination)
             return
-        if task_xml.tag == 'sequence':
+        if task_xml.tag in ('sequence', 'seq'):
             for child_task in task:
                 yield from self._run_task(child_task)
             return
@@ -659,7 +659,7 @@ class Node:
             if tasklist_xml is None:
                 raise ExperimentSyntaxError("Tasklist '%s' not defined" % (tl,))
             yield from self.run_tasklist(tasklist_xml, tasklists_env)
-        if task_xml.tag == 'parallel':
+        if task_xml.tag in ('par', 'parallel'):
             parallel_tasks = []
             for child_task in task_xml:
                 coro = self._run_task(child_task)

@@ -99,7 +99,7 @@ step = (
     stop_time?,
     attribute targets { text },
     attribute tasklist { text },
-    attribute background { "true" | "false" }
+    attribute background { "true" | "false" }?
   } |
   element repeat {
     attribute iterations { xsd:integer }?,
