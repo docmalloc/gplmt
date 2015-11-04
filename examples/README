@@ -1,0 +1,2 @@
+This directory should only contain 'human readable' examples, as opposed to the
+test cases in '../test/' that also cover edge cases / might be machine generated.

@@ -59,6 +59,9 @@ class Experiment:
         try:
             xml_parser = lxml.etree.XMLParser(remove_blank_text=True)
             document = lxml.etree.parse(filename, parser=xml_parser)
+            # XXX: Maybe we want to keep the comments?
+            # XXX: If that is then case, our processing logic needs to be more careful.
+            lxml.etree.strip_elements(document, [lxml.etree.Comment])
         except OSError:
             raise ExperimentSetupError("Could not read experiment file\n")
 
@@ -935,6 +938,9 @@ def process_includes(experiment_xml, parent_filename, env=None, memo=None):
         # XXX: we only try one filename, but we may want to specify include
         # locations, like compilers do.
         extension_xml = lxml.etree.parse(filename, parser=xml_parser)
+        # XXX: Maybe we want to keep the comments?
+        # XXX: If that is then case, our processing logic needs to be more careful.
+        lxml.etree.strip_elements(extension_xml, [lxml.etree.Comment])
         # XXX: some validation wouldn't hurt here
         new_memo = {filename}
         if memo is not None:
