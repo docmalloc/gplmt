@@ -102,6 +102,13 @@ class Experiment:
             loop.close()
 
 
+@asyncio.coroutine
+def run_delayed(coro, delay):
+    yield from asyncio.sleep(delay)
+    res = yield from coro
+    return res
+
+
 class ExecutionContext:
     def __init__(self, testbed):
         self.testbed = testbed
@@ -159,10 +166,12 @@ class ExecutionContext:
                 break
         logging.info("Synchronized nodes")
 
-    def schedule_tasklist(self, target_name, tasklist_xml, tasklists_env, background):
+    def schedule_tasklist(self, target_name, tasklist_xml, tasklists_env, background, delay=None):
         target_nodes = self.testbed._resolve_target(target_name)
         for node in target_nodes:
             coro = node.run_tasklist(tasklist_xml, tasklists_env)
+            if delay is not None and delay > 0:
+                coro = run_delayed(coro, delay)
             task = asyncio.async(coro)
             task.gplmt_background = background
             task.gplmt_node = node
@@ -230,7 +239,9 @@ class ExecutionContext:
         bg_str = step_xml.get('background')
         if bg_str is not None and bg_str.lower() == 'true':
             background = True
-        self.schedule_tasklist(targets_def, tasklist, tasklists_env, background)
+        delay = get_delay_attr(step_xml, 'start')
+        logging.info("delay for step with tl %s is %s", tasklist_name, delay)
+        self.schedule_tasklist(targets_def, tasklist, tasklists_env, background, delay)
 
     @asyncio.coroutine
     def _step_teardown(self, step_xml, tasklists_env):
@@ -442,13 +453,13 @@ def find_text(node, query):
     return res.text
 
 
-def get_delay(node, prefix):
-    t_relative = node.find(prefix + '_relative')
+def get_delay_attr(node, prefix):
+    t_relative = node.get(prefix + '_relative')
     if t_relative is not None:
-        return isodate.parse_duration(t_relative.text).total_seconds()
-    t_absolute = node.find(prefix + '_absolute')
+        return isodate.parse_duration(t_relative).total_seconds()
+    t_absolute = node.get(prefix + '_absolute')
     if t_absolute is not None:
-        st = isodate.parse_datetime(t_absolute.text)
+        st = isodate.parse_datetime(t_absolute)
         diff = st - datetime.datetime.now()
         return diff.total_seconds()
     return None
