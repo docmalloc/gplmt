@@ -649,8 +649,8 @@ class Node:
             yield from self.put(source, destination)
             return
         if task_xml.tag in ('sequence', 'seq'):
-            for child_task in task:
-                yield from self._run_task(child_task)
+            for child_task in task_xml:
+                yield from self._run_task(child_task, testbed, tasklists_env)
             return
         if task_xml.tag == 'fail':
             raise ExperimentExecutionError("user-requested fail")
@@ -665,7 +665,7 @@ class Node:
         if task_xml.tag in ('par', 'parallel'):
             parallel_tasks = []
             for child_task in task_xml:
-                coro = self._run_task(child_task)
+                coro = self._run_task(child_task, testbed, tasklists_env)
                 task = asyncio.async(coro)
                 parallel_tasks.append(task)
             done, pending = yield from asyncio.wait(parallel_tasks)
