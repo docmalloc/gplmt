@@ -31,6 +31,8 @@ from concurrent.futures import FIRST_COMPLETED
 from lxml.builder import E
 from contextlib import contextmanager
 
+import helper
+from error import ExperimentSyntaxError, ExperimentExecutionError, ExperimentSetupError, StopExperimentException
 
 __all__ = [
     "Testbed",
@@ -166,10 +168,10 @@ class ExecutionContext:
                 break
         logging.info("Synchronized nodes")
 
-    def schedule_tasklist(self, target_name, tasklist_xml, tasklists_env, background, delay=None):
+    def schedule_tasklist(self, target_name, tasklist_xml, tasklists_env, background, delay=None, var_env={}):
         target_nodes = self.testbed._resolve_target(target_name)
         for node in target_nodes:
-            coro = node.run_tasklist(tasklist_xml, tasklists_env)
+            coro = node.run_tasklist(tasklist_xml, tasklists_env, var_env)
             if delay is not None and delay > 0:
                 coro = run_delayed(coro, delay)
             task = asyncio.async(coro)
@@ -177,45 +179,66 @@ class ExecutionContext:
             task.gplmt_node = node
             self.tasks.append(task)
 
-    def schedule_loop_counted(self, loop_xml, tasklists_env, repetitions):
-        coro = self.run_loop_counted(loop_xml, tasklists_env, repetitions)
+    def schedule_loop_counted(self, loop_xml, tasklists_env, repetitions, var_env):
+        coro = self.run_loop_counted(loop_xml, tasklists_env, repetitions, var_env)
         task = asyncio.async(coro)
         task.gplmt_background = False
         task.gplmt_node = []
         self.tasks.append(task)
 
-    def schedule_loop_until(self, loop_xml, tasklists_env, deadline):
-        coro = self.run_loop_until(loop_xml, tasklists_env, deadline)
+    def schedule_loop_until(self, loop_xml, tasklists_env, deadline, var_env):
+        coro = self.run_loop_until(loop_xml, tasklists_env, deadline, var_env)
         task = asyncio.async(coro)
         task.gplmt_background = False
         task.gplmt_node = []
         self.tasks.append(task)
+
+    def schedule_loop_listing(self, loop_xml, tasklists_env, listing, listParam, var_env):
+        coro = self.run_loop_listing(loop_xml, tasklists_env, listing, listParam, var_env)
+        task = asyncio.async(coro)
+        task.gplmt_background = False
+        task.gplmt_node = []
+        self.tasks.append(task)        
 
     @asyncio.coroutine
-    def run_loop_counted(self, loop_xml, tasklists_env, repetitions):
+    def run_loop_counted(self, loop_xml, tasklists_env, repetitions, var_env):
         nested_ec = ExecutionContext(self.testbed)
         for x in range(repetitions):
             for step in list(loop_xml):
-                yield from nested_ec.run_step(step, tasklists_env)
+                yield from nested_ec.run_step(step, tasklists_env, var_env)
             yield from nested_ec.join()
 
     @asyncio.coroutine
-    def run_loop_until(self, loop_xml, tasklists_env, deadline):
+    def run_loop_until(self, loop_xml, tasklists_env, deadline, var_env):
         nested_ec = ExecutionContext(self.testbed)
         while time.time() < deadline:
             for step in list(loop_xml):
-                yield from nested_ec.run_step(step, tasklists_env)
+                yield from nested_ec.run_step(step, tasklists_env, var_env)
             yield from nested_ec.join()
 
     @asyncio.coroutine
-    def run_step(self, step_xml, tasklists_env):
+    def run_loop_listing(self, loop_xml, tasklists_env, listing, listParam, var_env):
+        nested_ec = ExecutionContext(self.testbed)
+        loopList = listing.split(";")
+        for x in loopList:
+            loop_env = {}
+            loop_env[listParam] = x
+            composedEnv = var_env
+            composedEnv.update(loop_env)
+            for step in list(loop_xml):
+                yield from nested_ec.run_step(step, tasklists_env, composedEnv)
+            yield from nested_ec.join()
+
+
+    @asyncio.coroutine
+    def run_step(self, step_xml, tasklists_env, var_env={}):
         if step_xml.tag not in self._step_table:
             raise ExperimentSyntaxError("Invalid step '%s'" % (step_xml.tag,))
         step_method = self._step_table[step_xml.tag]
-        yield from step_method(self, step_xml, tasklists_env)
+        yield from step_method(self, step_xml, tasklists_env, var_env)
 
     @asyncio.coroutine
-    def _step_synchronize(self, step_xml, tasklists_env):
+    def _step_synchronize(self, step_xml, tasklists_env, var_env={}):
         targets = None
         targets_str = step_xml.get('targets')
         if targets_str is not None:
@@ -223,7 +246,7 @@ class ExecutionContext:
         yield from self.join(targets)
 
     @asyncio.coroutine
-    def _step_tasklist(self, step_xml, tasklists_env):
+    def _step_tasklist(self, step_xml, tasklists_env, var_env={}):
         targets_def = step_xml.get("targets")
         if targets_def is None:
             logging.warn("step has no targets, skipping")
@@ -241,10 +264,14 @@ class ExecutionContext:
             background = True
         delay = get_delay_attr(step_xml, 'start')
         logging.info("delay for step with tl %s is %s", tasklist_name, delay)
-        self.schedule_tasklist(targets_def, tasklist, tasklists_env, background, delay)
+
+        composedEnv = var_env
+        composedEnv.update(helper.exportEnv(step_xml))
+        
+        self.schedule_tasklist(targets_def, tasklist, tasklists_env, background, delay, composedEnv)
 
     @asyncio.coroutine
-    def _step_teardown(self, step_xml, tasklists_env):
+    def _step_teardown(self, step_xml, tasklists_env, var_env):
         targets_def = step_xml.get("targets")
         if targets_def is None:
             logging.warn("register-teardown has no targets, skipping")
@@ -257,10 +284,14 @@ class ExecutionContext:
         if tasklist is None:
             raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name,))
         logging.info("Registering teardown for '%s' on '%s'", tasklist_name, targets_def)
-        self.testbed.teardowns.append((targets_def, tasklist))
+
+        composedEnv = var_env
+        composedEnv.update(helper.exportEnv(step_xml))
+
+        self.testbed.teardowns.append((targets_def, tasklist, composedEnv))
 
     @asyncio.coroutine
-    def _step_loop(self, step_xml, tasklists_env):
+    def _step_loop(self, step_xml, tasklists_env, var_env={}):
         num_repeat_str = step_xml.get("repeat")
         if num_repeat_str is not None:
             try:
@@ -268,13 +299,22 @@ class ExecutionContext:
             except ValueError:
                 logging.error("counted loop has malformed attribute iterations (%s), skipping", num_repeat_str)
                 return
-            self.schedule_loop_counted(step_xml, tasklists_env, num_repeat)
+            self.schedule_loop_counted(step_xml, tasklists_env, num_repeat, var_env)
             return
         duration = step_xml.get("duration")
         if duration is not None:
             deadline = time.time() + isodate.parse_duration(duration).total_seconds()
-            self.schedule_loop_until(step_xml, tasklists_env, deadline)
+            self.schedule_loop_until(step_xml, tasklists_env, deadline, var_env)
             return
+        listing = step_xml.get("list")
+        listParam = step_xml.get("param")
+        if listing is not None and listParam is not None:
+            self.schedule_loop_listing(step_xml, tasklists_env, listing, listParam, var_env)
+            return
+        if listing is None:
+            raise Exception("missing list definition")
+        if listParam is None:
+            raise Exception("missing parameter definition")
         raise Exception("not implemented")
 
     _step_table = {
@@ -323,10 +363,10 @@ class Testbed:
     @asyncio.coroutine
     def run_teardowns(self, tasklists_env):
         try:
-            for target, tasklist in self.teardowns:
+            for target, tasklist, teardown_env in self.teardowns:
                 # run teardowns in the root execution context of
                 # the testbed
-                self.ec.schedule_tasklist(target, tasklist, tasklists_env, background=False)
+                self.ec.schedule_tasklist(target, tasklist, tasklists_env, background=False, var_env=teardown_env)
                 yield from self.join()
         except ExperimentExecutionError as e:
             logging.error("Error during teardown:  %s" % (e.message))
@@ -439,8 +479,8 @@ class Testbed:
         return target_nodes
 
     @asyncio.coroutine
-    def run_step(self, step_xml, tasklists_env):
-        yield from self.ec.run_step(step_xml, tasklists_env)
+    def run_step(self, step_xml, tasklists_env, var_env={}):
+        yield from self.ec.run_step(step_xml, tasklists_env, {})
 
     def join(self, targets=None):
         yield from self.ec.join(targets)
@@ -533,18 +573,7 @@ class Node:
     def __init__(self, node_xml, testbed):
         self.testbed = testbed
         self.name = node_xml.get('name')
-        self._env = {}
-        for env_xml in node_xml.findall('export-env'):
-            name = env_xml.get('var')
-            if name is None:
-                raise ExperimentSyntaxError("export-env misses 'var' attribute")
-            value = env_xml.get('value')
-            if value is None:
-                v = os.environ.get(name)
-                if v is None:
-                    raise ExperimentSyntaxError("variable '%s' not found in environment of GPLMT control host" % (name,))
-                value = v
-            self._env[name] = value
+        self._env = helper.exportEnv(node_xml)
 
     @property
     def env(self):
@@ -552,9 +581,9 @@ class Node:
 
 
     @asyncio.coroutine
-    def _run_list(self, tasklist_xml, testbed, tasklists_env):
+    def _run_list(self, tasklist_xml, testbed, tasklists_env, var_env):
         for task_xml in tasklist_xml:
-            yield from self._run_task(task_xml, testbed, tasklists_env)
+            yield from self._run_task(task_xml, testbed, tasklists_env, var_env)
 
     @asyncio.coroutine
     def run_cleanup(self, tasklist_xml, tasklists_env):
@@ -566,7 +595,7 @@ class Node:
                 raise ExperimentSyntaxError("cleanup task %s not found\n" % (cleanup_name,))
         if cleanup_task is None:
             return
-        coro = self._run_list(cleanup_task, self.testbed, tasklists_env)
+        coro = self._run_list(cleanup_task, self.testbed, tasklists_env, var_env)
         try:
             yield from asyncio.async(coro)
         except asyncio.TimeoutError:
@@ -590,7 +619,7 @@ class Node:
 
 
     @asyncio.coroutine
-    def run_tasklist(self, tasklist_xml, tasklists_env):
+    def run_tasklist(self, tasklist_xml, tasklists_env, var_env):
         list_name = tasklist_xml.get('name', '(unnamed)')
         logging.info("running tasklist '%s'", list_name)
         # actual tasks, with declarations stripped
@@ -601,7 +630,7 @@ class Node:
         timeout = None
         if timeout_str is not None:
             timeout = isodate.parse_duration(timeout_str).total_seconds()
-        coro = self._run_list(tasklist_xml, self.testbed, tasklists_env)
+        coro = self._run_list(tasklist_xml, self.testbed, tasklists_env, var_env)
         try:
             logging.info(
                     "Running tasklist %s with timeout of %s.",
@@ -621,27 +650,27 @@ class Node:
         except ExperimentExecutionError as e:
             logging.error("Tasklist execution (%s on %s) raised exception (%s)", list_name, self.name, e.message)
             if error_policy in ('stop-experiment', 'stop-step', 'stop-tasklist'):
-                yield from self.run_cleanup(tasklist_xml, tasklists_env)
+                yield from self.run_cleanup(tasklist_xml, tasklists_env, var_env)
                 raise StopExperimentException(error_policy)
             else:
                 raise ExperimentSyntaxError("Unexpected error policy '%s'" % (error_policy,))
         yield from self.run_cleanup(tasklist_xml, tasklists_env)
 
     @asyncio.coroutine
-    def _run_task_run(self, task_xml):
+    def _run_task_run(self, task_xml, var_env):
         pol = RunTaskPolicy(self, task_xml)
 
         with pol.open_stdout() as stdout, pol.open_stderr() as stderr:
-            yield from self.execute(pol, stdout, stderr)
+            yield from self.execute(pol, stdout, stderr, var_env)
 
     @asyncio.coroutine
-    def _run_task(self, task_xml, testbed, tasklists_env):
+    def _run_task(self, task_xml, testbed, tasklists_env, var_env):
         name = task_xml.get('name', '(unnamed-task)')
         if task_xml.get('enabled', 'true').lower() == 'false':
             logging.info("Task %s disabled", name)
             return
         if task_xml.tag == 'run':
-            yield from self._run_task_run(task_xml)
+            yield from self._run_task_run(task_xml, var_env)
             return
         if task_xml.tag == 'get':
             source = find_text(task_xml, 'source')
@@ -661,7 +690,7 @@ class Node:
             return
         if task_xml.tag in ('sequence', 'seq'):
             for child_task in task_xml:
-                yield from self._run_task(child_task, testbed, tasklists_env)
+                yield from self._run_task(child_task, testbed, tasklists_env, var_env)
             return
         if task_xml.tag == 'fail':
             raise ExperimentExecutionError("user-requested fail")
@@ -672,11 +701,11 @@ class Node:
             tasklist_xml = tasklists_env.get(tl)
             if tasklist_xml is None:
                 raise ExperimentSyntaxError("Tasklist '%s' not defined" % (tl,))
-            yield from self.run_tasklist(tasklist_xml, tasklists_env)
+            yield from self.run_tasklist(tasklist_xml, tasklists_env, var_env)
         if task_xml.tag in ('par', 'parallel'):
             parallel_tasks = []
             for child_task in task_xml:
-                coro = self._run_task(child_task, testbed, tasklists_env)
+                coro = self._run_task(child_task, testbed, tasklists_env, var_env)
                 task = asyncio.async(coro)
                 parallel_tasks.append(task)
             done, pending = yield from asyncio.wait(parallel_tasks)
@@ -685,32 +714,17 @@ class Node:
             return
 
 
-def wrap_env(cmd, env):
-    """
-    Wrap a shell command in a call to 'env' with
-    the given environment variables.  Handles escaping.
-    """
-    argv = ['env']
-    for k, v in env.items():
-        pair = '%s=%s' % (k, v)
-        argv.append(shlex.quote(pair))
-
-    argv.append('sh')
-    argv.append('-c')
-    argv.append(shlex.quote(cmd))
-    return " ".join(argv)
-
-
-
 class LocalNode(Node):
     def __init__(self, node_xml, testbed):
         super().__init__(node_xml, testbed)
 
     @asyncio.coroutine
-    def execute(self, pol, stderr, stdout):
+    def execute(self, pol, stderr, stdout, var_env = {}):
         logging.info("Locally executing command '%s'", pol.command)
+        env = var_env
+        env.update(self.env)
         proc = yield from asyncio.create_subprocess_shell(
-                pol.command, stdout=stdout, stderr=stderr, env=self.env)
+                pol.command, stdout=stdout, stderr=stderr, env=env)
         ret = yield from proc.wait()
         pol.check_status(ret)
 
@@ -777,7 +791,7 @@ class SSHNode(Node):
         return os.path.expanduser(p)
 
     @asyncio.coroutine
-    def execute(self, pol, stdout=None, stderr=None):
+    def execute(self, pol, stdout=None, stderr=None, var_env = {}):
         yield from self.testbed.ssh_acquire()
 
         cmd = pol.command
@@ -786,8 +800,11 @@ class SSHNode(Node):
 
         # Add code to command to set environment variables
         # on the target host.
-        if self.env:
-            cmd = wrap_env(cmd, self.env)
+        env = var_env
+        env.update(self.env)
+
+        if env:
+            cmd = helper.wrap_env(cmd, env)
 
         yield from self.establish_master()
 
@@ -857,25 +874,6 @@ class SSHNode(Node):
         # Ensure that target directory exists
         os.makedirs(os.path.dirname(os.path.realpath(destination)), exist_ok=True)
         yield from self.scp_copy(scp_source, scp_destination)
-
-
-class ExperimentSyntaxError(Exception):
-    def __init__(self, message):
-        self.message = message
-
-
-class ExperimentExecutionError(Exception):
-    def __init__(self, message):
-        self.message = message
-
-
-class ExperimentSetupError(Exception):
-    def __init__(self, message):
-        self.message = message
-
-class StopExperimentException(Exception):
-    def __init__(self, scope):
-        self.scope = scope
 
 
 def establish_names(el):
