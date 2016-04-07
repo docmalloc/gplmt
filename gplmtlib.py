@@ -325,9 +325,9 @@ class ExecutionContext:
         if listing is not None and listParam is not None:
             self.schedule_loop_listing(step_xml, tasklists_env, listing, listParam, var_env)
             return
-        if listing is None:
+        if listing is None and listParam is not None:
             raise Exception("missing list definition")
-        if listParam is None:
+        if listParam is None and listing is not None:
             raise Exception("missing parameter definition")
         raise Exception("not implemented")
 

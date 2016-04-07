@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Demonstration of loop feature</description>
+
+  <targets>
+    <target name="mynode" type="local" />
+  </targets>
+
+  <tasklists>
+    <tasklist name="loopbody">
+      <seq><run>bash -c "echo foo &amp;&amp; sleep 1"</run></seq>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <loop until="2016-04-07T16:30:00">
+      <step tasklist="loopbody" targets="mynode" />
+    </loop>
+  </steps>
+
+</experiment>
