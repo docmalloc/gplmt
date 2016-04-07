@@ -219,7 +219,7 @@ class ExecutionContext:
     @asyncio.coroutine
     def run_loop_listing(self, loop_xml, tasklists_env, listing, listParam, var_env):
         nested_ec = ExecutionContext(self.testbed)
-        loopList = listing.split(";")
+        loopList = listing.split(" ")
         for x in loopList:
             loop_env = {}
             loop_env[listParam] = x
