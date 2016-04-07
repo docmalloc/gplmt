@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Step Timing</description>
+
+  <targets>
+    <target name="local1" type="local">
+		<export-env var="me" value="local1"/>
+	</target>
+    <target name="local2" type="local">
+		<export-env var="me" value="local2"/>
+	</target>
+  </targets>
+
+  <tasklists>
+    <tasklist name="print">
+		<seq>
+            <run>echo I am $me and the time is ; date</run>
+        </seq>
+    </tasklist>
+    <tasklist name="printMore">
+		<seq>
+            <run>while true ; do echo I am $me ; sleep 1 ; done</run>
+        </seq>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <step tasklist="print" targets="local2" start_absolute="2016-04-07T17:06:00" />
+    <loop repeat="5">
+	    <step tasklist="print" targets="local1" start_relative="PT5S" />
+        <synchronize/>
+    </loop>
+  </steps>
+
+</experiment>

@@ -332,10 +332,8 @@ class ExecutionContext:
             raise Exception("missing parameter definition")
         until = step_xml.get("until")
         if until is not None:
-            print(until)
             deadline = parse(until)
             deadline = time.mktime(deadline.timetuple())
-            print(deadline)
             self.schedule_loop_until(step_xml, tasklists_env, deadline, var_env)
             return
         raise Exception("not implemented")
@@ -522,9 +520,10 @@ def get_delay_attr(node, prefix):
         return isodate.parse_duration(t_relative).total_seconds()
     t_absolute = node.get(prefix + '_absolute')
     if t_absolute is not None:
-        st = isodate.parse_datetime(t_absolute)
-        diff = st - datetime.datetime.now()
-        return diff.total_seconds()
+        st = parse(t_absolute)
+        st = time.mktime(st.timetuple())
+        diff = st - time.time()
+        return diff
     return None
 
 
