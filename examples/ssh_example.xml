@@ -13,8 +13,10 @@
 
   <tasklists>
     <tasklist name="hostinfo">
-      <run>uname -a</run>
-      <run>uptime</run>
+        <par>
+            <run>uname -a</run>
+            <run>uptime</run>
+        </par>
     </tasklist>
   </tasklists>
 

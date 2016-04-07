@@ -236,7 +236,9 @@
   <define name="step">
     <choice>
       <element name="synchronize">
-        <empty/>
+        <optional>
+          <attribute name="targets"/>
+        </optional>
       </element>
       <element name="step">
         <optional>
@@ -245,6 +247,9 @@
         <optional>
           <ref name="stop_time"/>
         </optional>
+        <zeroOrMore>
+          <ref name="export-env"/>
+        </zeroOrMore>
         <attribute name="targets"/>
         <attribute name="tasklist"/>
         <optional>
@@ -256,9 +261,9 @@
           </attribute>
         </optional>
       </element>
-      <element name="repeat">
+      <element name="loop">
         <optional>
-          <attribute name="iterations">
+          <attribute name="repeat">
             <data type="integer"/>
           </attribute>
         </optional>
@@ -268,9 +273,15 @@
           </attribute>
         </optional>
         <optional>
-          <attribute name="during">
+          <attribute name="duration">
             <data type="duration"/>
           </attribute>
+        </optional>
+        <optional>
+          <attribute name="list"/>
+        </optional>
+        <optional>
+          <attribute name="param"/>
         </optional>
         <zeroOrMore>
           <ref name="step"/>
@@ -280,6 +291,7 @@
         <attribute name="tasklist">
           <ref name="tasklist-name"/>
         </attribute>
+        <attribute name="targets"/>
       </element>
     </choice>
   </define>

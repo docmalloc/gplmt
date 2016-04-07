@@ -13,13 +13,13 @@
 
   <tasklists>
     <tasklist name="create-tunnel-1">
-      <run>tunnel $TARGET1 &amp;&amp; echo "$$" > processes_to_kill</run>
+      <seq><run>tunnel $TARGET1 &amp;&amp; echo "$$" > processes_to_kill</run></seq>
     </tasklist>
     <tasklist name="xprivacy-setup">
-      <run>xprivacy-setup $LONG1 $LONG2 $LAT1 $LAT2</run>
+      <seq><run>xprivacy-setup $LONG1 $LONG2 $LAT1 $LAT2</run></seq>
     </tasklist>
     <tasklist name="create-tunnel-2">
-      <run>tunnel $TARGET2</run>
+      <seq><run>tunnel $TARGET2</run></seq>
     </tasklist>
   </tasklists>
 

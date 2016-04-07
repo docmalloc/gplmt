@@ -216,15 +216,20 @@
     <xs:choice>
       <xs:element ref="synchronize"/>
       <xs:element ref="step"/>
-      <xs:element ref="repeat"/>
+      <xs:element ref="loop"/>
       <xs:element ref="register-teardown"/>
     </xs:choice>
   </xs:group>
   <xs:element name="synchronize">
-    <xs:complexType/>
+    <xs:complexType>
+      <xs:attribute name="targets"/>
+    </xs:complexType>
   </xs:element>
   <xs:element name="step">
     <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="export-env"/>
+      </xs:sequence>
       <xs:attributeGroup ref="start_time"/>
       <xs:attributeGroup ref="stop_time"/>
       <xs:attribute name="targets" use="required"/>
@@ -239,17 +244,20 @@
       </xs:attribute>
     </xs:complexType>
   </xs:element>
-  <xs:element name="repeat">
+  <xs:element name="loop">
     <xs:complexType>
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="step"/>
-      <xs:attribute name="iterations" type="xs:integer"/>
+      <xs:attribute name="repeat" type="xs:integer"/>
       <xs:attribute name="until" type="xs:dateTime"/>
-      <xs:attribute name="during" type="xs:duration"/>
+      <xs:attribute name="duration" type="xs:duration"/>
+      <xs:attribute name="list"/>
+      <xs:attribute name="param"/>
     </xs:complexType>
   </xs:element>
   <xs:element name="register-teardown">
     <xs:complexType>
       <xs:attribute name="tasklist" use="required"/>
+      <xs:attribute name="targets" use="required"/>
     </xs:complexType>
   </xs:element>
   <xs:attributeGroup name="start_time">

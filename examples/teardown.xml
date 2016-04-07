@@ -8,13 +8,13 @@
 
   <tasklists>
     <tasklist name="t1">
-      <run expected-status="1">false</run>
+      <seq><run expected-status="1">false</run></seq>
     </tasklist>
     <tasklist name="t2">
-      <run expected-status="0">false</run>
+      <seq><run expected-status="0">false</run></seq>
     </tasklist>
     <tasklist name="tx">
-      <run>echo tearing down</run>
+      <seq><run>echo tearing down</run></seq>
     </tasklist>
   </tasklists>
 

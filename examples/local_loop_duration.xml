@@ -9,7 +9,7 @@
 
   <tasklists>
     <tasklist name="loopbody">
-      <run>bash -c "echo foo &amp;&amp; sleep 1"</run>
+      <seq><run>bash -c "echo foo &amp;&amp; sleep 1"</run></seq>
     </tasklist>
   </tasklists>
 

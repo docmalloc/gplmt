@@ -8,6 +8,10 @@
       <target name="loc3" type="local" />
     </target>
   </targets>
+
   <!-- Tasklist element is still required for validity -->
   <tasklists />
+
+  <steps/>
+
 </experiment>

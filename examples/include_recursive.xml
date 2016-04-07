@@ -3,13 +3,16 @@
   
   <description>Demonstration of recursion detection</description>
 
-  <include file="include_recursive.xml" />
+  <include file="include_recursive.xml" prefix="rec" />
 
-  <include file="include/hello_world.xml" />
+  <include file="include/hello_world.xml" prefix="h" />
+  <include file="include/targets_local3.xml" prefix="t" />
 
+    <targets></targets>
+    <tasklists></tasklists>
 
   <steps>
-    <start-tasklist ref="hello-world" targets="all-loc" />
+    <step tasklist="h.hello-world" targets="t.all-loc" />
   </steps>
 
 </experiment>

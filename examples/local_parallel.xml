@@ -3,27 +3,27 @@
   
   <description>Demonstration of parallel feature</description>
 
-  <target name="all-loc" type="group">
-    <target name="loc1" type="local" />
-    <target name="loc2" type="local" />
-  </target>
+    <targets>
+      <target name="all-loc" type="group">
+        <target name="loc1" type="local" />
+        <target name="loc2" type="local" />
+      </target>
+    </targets>
 
-  <tasklist name="tl">
-    <parallel>
-      <run>
-        <command>bash -c "echo I am FOO $$ &amp;&amp; sleep 1"</command>
-      </run>
-      <run>
-        <command>bash -c "echo I am BAR $$ &amp;&amp; sleep 1"</command>
-      </run>
-    </parallel>
-    <run>
-      <command>bash -c "echo END $$ &amp;&amp; sleep 1"</command>
-    </run>
-  </tasklist>
+    <tasklists>
+      <tasklist name="tl">
+	    <seq>
+            <par>
+              <run>bash -c "echo I am FOO $$ &amp;&amp; sleep 1"</run>
+              <run>bash -c "echo I am BAR $$ &amp;&amp; sleep 1"</run>
+            </par>
+            <run>bash -c "echo END $$ &amp;&amp; sleep 1"</run>
+	    </seq>
+      </tasklist>
+    </tasklists>
 
   <steps>
-    <start-tasklist ref="tl" targets="all-loc" />
+    <step tasklist="tl" targets="all-loc" />
   </steps>
 
 </experiment>

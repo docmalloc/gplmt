@@ -1,23 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <experiment>
   
-  <description>SSH example</description>
+  <description>Basic Example</description>
 
-  <target name="sam" type="ssh">
-    <user>dold</user>
-    <host>sam.net.in.tum.de</host>
-  </target>
+    <targets>
+        <target name="sam" type="ssh">
+            <user>dold</user>
+            <host>sam.net.in.tum.de</host>
+        </target>
 
-  <target name="local" type="local" />
+        <target name="local" type="local" />
+    </targets>
 
-  <steps>
-    <start-tasklist targets="sam">
-      <run>
-        <command>echo "I Hello"</command>
-      </run>
-      <run>
-        <command>uname -a</command>
-      </run>
-    </start-tasklist>
-  </steps>
+    <tasklists>
+        <tasklist name="test">
+	        <seq>
+                <run>echo "I Hello"</run>
+                <run>uname -a</run>
+            </seq>
+        </tasklist>
+    </tasklists>
+
+    <steps>
+        <step tasklist="test" targets="sam local"/>
+    </steps>
 </experiment>

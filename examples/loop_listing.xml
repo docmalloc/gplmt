@@ -18,13 +18,19 @@
 
   <tasklists>
     <tasklist name="innerLoop">
-		<run>echo XYZ I am $me in innerLoop outer = $outer inner = $inner</run>
+        <seq>
+		    <run>echo XYZ I am $me in innerLoop outer = $outer inner = $inner</run>
+        </seq>
     </tasklist>
     <tasklist name="outerLoop">
-		<run>echo XYZ I am $me in outerLoop outer = $outer inner = $inner</run>
+        <seq>
+		    <run>echo XYZ I am $me in outerLoop outer = $outer inner = $inner</run>
+        </seq>
     </tasklist>
     <tasklist name="nonLoop">
-		<run>echo XYZ I am $me not in a Loop outer = $outer inner = $inner</run>
+        <seq>
+		    <run>echo XYZ I am $me not in a Loop outer = $outer inner = $inner</run>
+        </seq>
     </tasklist>
   </tasklists>
 

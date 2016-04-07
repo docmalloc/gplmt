@@ -93,22 +93,26 @@ run = element run {
 }
 
 step = (
-  element synchronize { empty } |
+  element synchronize { attribute targets { text }? } |
   element step {
     start_time?,
     stop_time?,
+    export-env*,
     attribute targets { text },
     attribute tasklist { text },
     attribute background { "true" | "false" }?
   } |
-  element repeat {
-    attribute iterations { xsd:integer }?,
+  element loop {
+    attribute repeat { xsd:integer }?,
     attribute until { xsd:dateTime }?,
-    attribute during { xsd:duration }?,
+    attribute duration { xsd:duration }?,
+    attribute list { text }?,
+    attribute param { text }?,
     step*
   } |
   element register-teardown {
-    attribute tasklist { tasklist-name }
+    attribute tasklist { tasklist-name },
+    attribute targets { text }
   }
 )
 

@@ -13,7 +13,7 @@
 
   <tasklists>
     <tasklist timeout="PT30S" name="disk_space">
-      <run>hostname; df -h</run>
+      <seq><run>hostname; df -h</run></seq>
     </tasklist>
   </tasklists>
 
