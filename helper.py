@@ -36,3 +36,9 @@ def wrap_env(cmd, env):
     argv.append(shlex.quote(cmd))
     return " ".join(argv)
 
+def isInt(value):
+  try:
+    int(value)
+    return True
+  except ValueError:
+    return False

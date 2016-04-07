@@ -115,6 +115,7 @@ class ExecutionContext:
     def __init__(self, testbed):
         self.testbed = testbed
         self.tasks = []
+        self.var = {}
 
 
     @asyncio.coroutine
@@ -219,12 +220,23 @@ class ExecutionContext:
     @asyncio.coroutine
     def run_loop_listing(self, loop_xml, tasklists_env, listing, listParam, var_env):
         nested_ec = ExecutionContext(self.testbed)
-        loopList = listing.split(" ")
+        
+        if ":" in listing:
+            rangeGiven = listing.split(":")
+            if len(rangeGiven) == 2 and helper.isInt(rangeGiven[0]) and helper.isInt(rangeGiven[1]):
+                loopList = range(int(rangeGiven[0]), int(rangeGiven[1])+1)
+                loopList = map(str, loopList)                
+            else:
+                raise ExperimentSyntaxError("Invalid Range declaration '%s'" % (loop_xml.tag,))
+        else:
+            loopList = listing.split(" ")
         for x in loopList:
             loop_env = {}
             loop_env[listParam] = x
-            composedEnv = var_env
+            composedEnv = {}
+            composedEnv.update(var_env)
             composedEnv.update(loop_env)
+            nested_ec.var = composedEnv
             for step in list(loop_xml):
                 yield from nested_ec.run_step(step, tasklists_env, composedEnv)
             yield from nested_ec.join()
@@ -265,7 +277,8 @@ class ExecutionContext:
         delay = get_delay_attr(step_xml, 'start')
         logging.info("delay for step with tl %s is %s", tasklist_name, delay)
 
-        composedEnv = var_env
+        composedEnv = {}
+        composedEnv.update(var_env)
         composedEnv.update(helper.exportEnv(step_xml))
         
         self.schedule_tasklist(targets_def, tasklist, tasklists_env, background, delay, composedEnv)
@@ -285,7 +298,8 @@ class ExecutionContext:
             raise ExperimentSyntaxError("Tasklist '%s' not found" % (tasklist_name,))
         logging.info("Registering teardown for '%s' on '%s'", tasklist_name, targets_def)
 
-        composedEnv = var_env
+        composedEnv = {}
+        composedEnv.update(var_env)
         composedEnv.update(helper.exportEnv(step_xml))
 
         self.testbed.teardowns.append((targets_def, tasklist, composedEnv))
@@ -721,8 +735,8 @@ class LocalNode(Node):
     @asyncio.coroutine
     def execute(self, pol, stderr, stdout, var_env = {}):
         logging.info("Locally executing command '%s'", pol.command)
-        env = var_env
-        env.update(self.env)
+        env = self.env
+        env.update(var_env)
         proc = yield from asyncio.create_subprocess_shell(
                 pol.command, stdout=stdout, stderr=stderr, env=env)
         ret = yield from proc.wait()
@@ -800,8 +814,8 @@ class SSHNode(Node):
 
         # Add code to command to set environment variables
         # on the target host.
-        env = var_env
-        env.update(self.env)
+        env = self.env
+        env.update(var_env)
 
         if env:
             cmd = helper.wrap_env(cmd, env)
