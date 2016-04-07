@@ -30,6 +30,7 @@ import time
 from concurrent.futures import FIRST_COMPLETED
 from lxml.builder import E
 from contextlib import contextmanager
+from dateutil.parser import parse
 
 import helper
 from error import ExperimentSyntaxError, ExperimentExecutionError, ExperimentSetupError, StopExperimentException
@@ -329,6 +330,14 @@ class ExecutionContext:
             raise Exception("missing list definition")
         if listParam is None and listing is not None:
             raise Exception("missing parameter definition")
+        until = step_xml.get("until")
+        if until is not None:
+            print(until)
+            deadline = parse(until)
+            deadline = time.mktime(deadline.timetuple())
+            print(deadline)
+            self.schedule_loop_until(step_xml, tasklists_env, deadline, var_env)
+            return
         raise Exception("not implemented")
 
     _step_table = {
