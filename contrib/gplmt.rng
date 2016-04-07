@@ -292,6 +292,9 @@
           <ref name="tasklist-name"/>
         </attribute>
         <attribute name="targets"/>
+        <zeroOrMore>
+          <ref name="export-env"/>
+        </zeroOrMore>
       </element>
     </choice>
   </define>

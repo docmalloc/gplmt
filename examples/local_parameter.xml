@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Local Parameter for Steps</description>
+
+  <targets>
+    <target name="local" type="local">
+		<export-env var="text2" value="global"/>
+	</target>
+    <target name="asgard" type="ssh">
+        <user>root</user>
+        <host>asgard.net.in.tum.de</host>
+        <export-env var="text2" value="global remote"/>
+    </target>
+  </targets>
+
+  <tasklists>
+    <tasklist name="basic">
+    <par>
+		<run>hostname; echo text1 $text1</run>
+		<run>hostname; echo text2 $text2</run>
+    </par>
+    </tasklist>
+    <tasklist name="td">
+    <par>
+		<run>echo text1 $text1 'teardown'</run>
+		<run>echo text2 $text2 'teardown'</run>
+    </par>
+    </tasklist>
+    <tasklist name="print">
+		<seq><run>echo loopingText $text</run></seq>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+	<register-teardown tasklist="td" targets="local">
+         <export-env var="text1" value="teardown1"/>
+    </register-teardown>
+    <register-teardown tasklist="td" targets="local" />
+    <step tasklist="basic" targets="local asgard">
+		<export-env var="text1" value="text1"/>
+	</step>
+    <synchronize />
+	<step tasklist="basic" targets="local asgard"/>    
+  </steps>
+</experiment>

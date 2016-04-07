@@ -9,12 +9,12 @@
 
   <tasklists>
     <tasklist name="foo">
-      <run>echo This is foo</run>
+      <seq><run>echo This is foo</run></seq>
     </tasklist>
     <tasklist name="hello-world">
-      <run>echo Hello World</run>
+      <seq><run>echo Hello World</run>
       <call tasklist="foo" />
-      <call tasklist="foo" />
+      <call tasklist="foo" /></seq>
     </tasklist>
   </tasklists>
 

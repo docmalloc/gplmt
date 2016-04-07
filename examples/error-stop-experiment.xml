@@ -9,14 +9,16 @@
 
   <tasklists>
     <tasklist name="clean1" cleanup="true">
-      <run>echo "This is the cleanup"</run>
+      <seq><run>echo "This is the cleanup"</run></seq>
     </tasklist>
     <tasklist name="tl1" on-error="stop-experiment" cleanup="clean1">
-      <fail />
-      <run>echo "This command should not run (after fail)"</run>
+     	<seq>
+      		<fail status="failed"/>
+      		<run>echo "This command should not run (after fail)"</run>
+	</seq>
     </tasklist>
     <tasklist name="tl2">
-      <run>echo "This command should not run (in 2nd tasklist)"</run>
+      <seq><run>echo "This command should not run (in 2nd tasklist)"</run></seq>
     </tasklist>
   </tasklists>
 

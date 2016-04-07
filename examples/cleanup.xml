@@ -7,14 +7,16 @@
   </targets>
 
   <tasklists>
-    <tasklist name="foo" on-error="stop" cleanup="cleanme">
-      <run expected-status="0">true</run>
-      <run expected-status="0">false</run>
-      <run>echo not reached</run>
+    <tasklist name="foo" on-error="stop-tasklist" cleanup="cleanme">
+	<seq>
+      		<run expected-status="0">true</run>
+      		<run expected-status="0">false</run>
+      		<run>echo not reached</run>
+	</seq>
     </tasklist>
 
     <tasklist name="cleanme">
-      <run>echo cleaned!</run>
+      <seq><run>echo cleaned!</run></seq>
     </tasklist>
   </tasklists>
 

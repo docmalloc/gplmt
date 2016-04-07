@@ -9,7 +9,7 @@
 
   <tasklists>
     <tasklist name="hello-world">
-      <run>echo Hello World</run>
+      <seq><run>echo Hello World</run></seq>
     </tasklist>
   </tasklists>
 

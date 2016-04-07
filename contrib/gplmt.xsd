@@ -256,6 +256,9 @@
   </xs:element>
   <xs:element name="register-teardown">
     <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" ref="export-env"/>
+      </xs:sequence>
       <xs:attribute name="tasklist" use="required"/>
       <xs:attribute name="targets" use="required"/>
     </xs:complexType>

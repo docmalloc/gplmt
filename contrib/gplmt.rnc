@@ -112,7 +112,8 @@ step = (
   } |
   element register-teardown {
     attribute tasklist { tasklist-name },
-    attribute targets { text }
+    attribute targets { text },
+    export-env*
   }
 )
 

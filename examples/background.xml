@@ -9,10 +9,10 @@
 
   <tasklists>
     <tasklist name="hello-world">
-      <run>echo Hello World</run>
+      <seq><run>echo Hello World</run></seq>
     </tasklist>
     <tasklist name="sleep">
-      <run>sleep 3600</run>
+      <seq><run>sleep 3600</run></seq>
     </tasklist>
   </tasklists>
 

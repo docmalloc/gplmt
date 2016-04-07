@@ -9,11 +9,13 @@
 
   <tasklists>
     <tasklist name="tl1" on-error="stop-experiment">
-      <fail />
-      <run>echo "This command should not run (after fail)"</run>
+	<seq>
+      		<fail status="failed"/>
+      		<run>echo "This command should not run (after fail)"</run>
+	</seq>
     </tasklist>
     <tasklist name="tl2">
-      <run>echo "This command should not run (in 2nd tasklist)"</run>
+      <seq><run>echo "This command should not run (in 2nd tasklist)"</run></seq>
     </tasklist>
   </tasklists>
 
