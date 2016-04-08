@@ -21,13 +21,16 @@
 import argparse
 import asyncio
 import sys
-from gplmtlib import *
 from copy import deepcopy
 import logging
+
+import src.gplmtlib as gplmtlib
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "experiment_file", help="experiment description XML file")
+parser.add_argument(
+    "--rng",default="contrib/gplmt.rng", help="rng-File to validare XML experiment description against")
 parser.add_argument(
     "--dry", "-d", help="do a dry run")
 parser.add_argument(
@@ -51,6 +54,6 @@ logging.basicConfig(
             datefmt='%Y-%m-%d %T %Z',
             level=logging.INFO)
 
-experiment = Experiment.from_file(args.experiment_file, settings=args)
+experiment = gplmtlib.Experiment.from_file(args.experiment_file, settings=args)
 experiment.run_synchronous()
 

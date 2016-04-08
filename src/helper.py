@@ -3,7 +3,7 @@ import os
 import lxml.etree
 import shlex
 
-from error import ExperimentSyntaxError
+from src.error import ExperimentSyntaxError
 
 def exportEnv(structure):
     envVar = {}

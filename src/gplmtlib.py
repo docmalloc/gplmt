@@ -27,13 +27,14 @@ import shlex
 import signal
 import xmlrpc.client
 import time
+import sys
 from concurrent.futures import FIRST_COMPLETED
 from lxml.builder import E
 from contextlib import contextmanager
 from dateutil.parser import parse
 
-import helper
-from error import ExperimentSyntaxError, ExperimentExecutionError, ExperimentSetupError, StopExperimentException
+import src.helper as helper
+from src.error import ExperimentSyntaxError, ExperimentExecutionError, ExperimentSetupError, StopExperimentException
 
 __all__ = [
     "Testbed",
@@ -60,8 +61,16 @@ class Experiment:
     @classmethod
     def from_file(cls, filename, settings):
         try:
+            rng_file = settings.rng
+            relaxng_doc = lxml.etree.parse(rng_file)
+            relaxng = lxml.etree.RelaxNG(relaxng_doc)
             xml_parser = lxml.etree.XMLParser(remove_blank_text=True)
             document = lxml.etree.parse(filename, parser=xml_parser)
+            if not relaxng.validate(document):
+                print("Could not validate experiment file.")
+                print("Please check your experiment description file following the given schema in: ", rng_file)
+                print("If the given rng-file is not the one you want, please define your own using the --rng option.")
+                sys.exit(1)
             # XXX: Maybe we want to keep the comments?
             # XXX: If that is then case, our processing logic needs to be more careful.
             lxml.etree.strip_elements(document, [lxml.etree.Comment])
