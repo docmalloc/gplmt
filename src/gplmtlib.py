@@ -28,6 +28,7 @@ import signal
 import xmlrpc.client
 import time
 import sys
+import subprocess
 from concurrent.futures import FIRST_COMPLETED
 from lxml.builder import E
 from contextlib import contextmanager
@@ -763,13 +764,14 @@ class LocalNode(Node):
         env = self.env
         env.update(var_env)
         proc = yield from asyncio.create_subprocess_shell(
-                pol.command, stdout=stdout, stderr=stderr, env=env)
+                pol.command, stdout=stdout, stderr=stderr, env=env, start_new_session=True)
         try:
             ret = yield from proc.wait()
             pol.check_status(ret)
         except asyncio.CancelledError as e:
-            proc.kill()
-            logging.info("Local command terminated due to timeout or stop_time.")
+                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                logging.info("Local command terminated due to timeout or stop_time.")
+            
 
     @asyncio.coroutine
     def put(self, source, destination):
@@ -873,7 +875,7 @@ class SSHNode(Node):
             logging.info("SSH command terminated with status %s", ret)
             pol.check_status(ret)
         except asyncio.CancelledError as e:
-            proc.kill()
+            proc.terminate()
             logging.info("SSH command terminated due to timeout or stop_time.")
         finally:
             self.testbed.ssh_release()
