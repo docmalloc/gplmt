@@ -170,10 +170,10 @@ class ExecutionContext:
                 break
         logging.info("Synchronized nodes")
 
-    def schedule_tasklist(self, target_name, tasklist_xml, tasklists_env, background, delay=None, var_env={}):
+    def schedule_tasklist(self, target_name, tasklist_xml, tasklists_env, background, delay=None, var_env={}, stop_time=None):
         target_nodes = self.testbed._resolve_target(target_name)
         for node in target_nodes:
-            coro = node.run_tasklist(tasklist_xml, tasklists_env, var_env)
+            coro = node.run_tasklist(tasklist_xml, tasklists_env, var_env, stop_time)
             if delay is not None and delay > 0:
                 coro = run_delayed(coro, delay)
             task = asyncio.async(coro)
@@ -276,13 +276,14 @@ class ExecutionContext:
         if bg_str is not None and bg_str.lower() == 'true':
             background = True
         delay = get_delay_attr(step_xml, 'start')
+        stop = get_delay_attr(step_xml, 'stop')
         logging.info("delay for step with tl %s is %s", tasklist_name, delay)
 
         composedEnv = {}
         composedEnv.update(var_env)
         composedEnv.update(helper.exportEnv(step_xml))
         
-        self.schedule_tasklist(targets_def, tasklist, tasklists_env, background, delay, composedEnv)
+        self.schedule_tasklist(targets_def, tasklist, tasklists_env, background, delay, composedEnv, stop)
 
     @asyncio.coroutine
     def _step_teardown(self, step_xml, tasklists_env, var_env):
@@ -608,7 +609,7 @@ class Node:
             yield from self._run_task(task_xml, testbed, tasklists_env, var_env)
 
     @asyncio.coroutine
-    def run_cleanup(self, tasklist_xml, tasklists_env):
+    def run_cleanup(self, tasklist_xml, tasklists_env, var_env):
         cleanup_task = None
         cleanup_name = tasklist_xml.get('cleanup')
         if cleanup_name is not None:
@@ -617,7 +618,8 @@ class Node:
                 raise ExperimentSyntaxError("cleanup task %s not found\n" % (cleanup_name,))
         if cleanup_task is None:
             return
-        coro = self._run_list(cleanup_task, self.testbed, tasklists_env, var_env)
+        #coro = self._run_list(cleanup_task, self.testbed, tasklists_env, var_env)
+        coro = self.run_tasklist(cleanup_task, tasklists_env, var_env, None)
         try:
             yield from asyncio.async(coro)
         except asyncio.TimeoutError:
@@ -641,7 +643,7 @@ class Node:
 
 
     @asyncio.coroutine
-    def run_tasklist(self, tasklist_xml, tasklists_env, var_env):
+    def run_tasklist(self, tasklist_xml, tasklists_env, var_env, stop_time):
         list_name = tasklist_xml.get('name', '(unnamed)')
         logging.info("running tasklist '%s'", list_name)
         # actual tasks, with declarations stripped
@@ -649,9 +651,15 @@ class Node:
         if error_policy is None:
             error_policy = 'stop-tasklist'
         timeout_str = tasklist_xml.get('timeout')
-        timeout = None
+        timeout = stop_time
         if timeout_str is not None:
-            timeout = isodate.parse_duration(timeout_str).total_seconds()
+            timeout_tl = isodate.parse_duration(timeout_str).total_seconds()
+            if timeout is None:
+                timeout = timeout_tl
+            else:
+                times = [timeout_tl, timeout]
+                timeout = min(times)
+
         coro = self._run_list(tasklist_xml, self.testbed, tasklists_env, var_env)
         try:
             logging.info(
@@ -676,7 +684,7 @@ class Node:
                 raise StopExperimentException(error_policy)
             else:
                 raise ExperimentSyntaxError("Unexpected error policy '%s'" % (error_policy,))
-        yield from self.run_cleanup(tasklist_xml, tasklists_env)
+        yield from self.run_cleanup(tasklist_xml, tasklists_env, var_env)
 
     @asyncio.coroutine
     def _run_task_run(self, task_xml, var_env):
@@ -747,8 +755,12 @@ class LocalNode(Node):
         env.update(var_env)
         proc = yield from asyncio.create_subprocess_shell(
                 pol.command, stdout=stdout, stderr=stderr, env=env)
-        ret = yield from proc.wait()
-        pol.check_status(ret)
+        try:
+            ret = yield from proc.wait()
+            pol.check_status(ret)
+        except asyncio.CancelledError as e:
+            proc.kill()
+            logging.info("Local command terminated due to timeout or stop_time.")
 
     @asyncio.coroutine
     def put(self, source, destination):
@@ -847,11 +859,15 @@ class SSHNode(Node):
                 *argv,
                 stdout=stdout, stderr=stderr)
         logging.info("waiting ...")
-        ret = yield from proc.wait()
-        logging.info("SSH command terminated with status %s", ret)
-        pol.check_status(ret)
-
-        self.testbed.ssh_release()
+        try:
+            ret = yield from proc.wait()
+            logging.info("SSH command terminated with status %s", ret)
+            pol.check_status(ret)
+        except asyncio.CancelledError as e:
+            proc.kill()
+            logging.info("SSH command terminated due to timeout or stop_time.")
+        finally:
+            self.testbed.ssh_release()
 
     @asyncio.coroutine
     def scp_copy(self, scp_source, scp_destination):

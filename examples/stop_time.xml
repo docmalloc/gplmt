@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Step Timing</description>
+
+  <targets>
+    <target name="local1" type="local">
+		<export-env var="me" value="local1"/>
+	</target>
+    <target name="local2" type="local">
+		<export-env var="me" value="local2"/>
+	</target>
+  </targets>
+
+  <tasklists>
+    <tasklist name="printMore" cleanup="cleanup" timeout="PT5S">
+		<seq>
+            <run>while true ; do echo I am $me ; sleep 1 ; done</run>
+        </seq>
+    </tasklist>
+	<tasklist name="cleanup" timeout="PT2S">
+		<seq>
+            <run>while true ; do echo I am $me and I do a clean up ; sleep 1 ; done</run>
+        </seq>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <step tasklist="printMore" targets="local2" stop_relative="PT10S" />
+    <step tasklist="printMore" targets="local1" stop_relative="PT3S" /> 
+    <step tasklist="printMore" targets="local1" stop_absolute="2016-04-08T09:49:00" />
+  </steps>
+
+</experiment>
