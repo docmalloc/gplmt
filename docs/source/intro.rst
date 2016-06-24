@@ -304,7 +304,7 @@ Using the synchronize keyword steps are executed in sequence.
 
   <steps>
     <step tasklist="hello-world" targets="local1" />
-    </ synchronize>
+    </synchronize>
     <step tasklist="hello-world" targets="local2" />
   </steps>
 
@@ -318,7 +318,7 @@ Additionally, selective synchronization is possible.
   <steps>
     <step tasklist="longRunningTask" targets="local1" />
     <step tasklist="hello-world" targets="local1" />
-    </ synchronize targets="local1">
+    </synchronize targets="local1">
     <step tasklist="hello-world" targets="local2" />
   </steps>
 
@@ -328,6 +328,40 @@ In case of long-running tasks this can be helpful.
 
 Looping
 ~~~~~~~
+
+GPLMT supports the following types of loops:
+ * counted loops
+ * until loops
+ * duration loops
+ * listing loops
+
+All loops in GPLMT are implemented such that they do not implicitely synchronize after the first round of execution.
+This has to be enforced using the `synchronized` statement (see `Counted Loops` for an example).
+
+Counted Loops
+*************
+
+Counted loops simply schedule the steps within the loop body as often as specified in repeat.
+
+.. code-block:: xml
+
+  <steps>
+    <loop repeat="5">
+      <step tasklist="loopbody" targets="mynode" />
+    </loop>
+  </steps>
+  
+If an action has to be executed one after another a `synchronized statement add the end is needed.
+
+.. code-block:: xml
+
+  <steps>
+    <loop repeat="5">
+      <step tasklist="loopbody" targets="mynode" />
+      </synchronize>
+    </loop>
+  </steps>
+
 
 Background Steps
 ~~~~~~~~~~~~~~~~
