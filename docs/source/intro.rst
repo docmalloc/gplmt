@@ -272,6 +272,29 @@ The possible values are:
 Defining the Execution Plan
 ---------------------------
 
+An execution plan is the combination of targets and tasklists within the step definition.
+
+.. code-block:: xml
+
+  <steps>
+    <step tasklist="hello-world" targets="local" />
+  </steps>
+
+The execution of tasklist `hello-world` is bound to target `local`.
+
+Steps can be organized to be executed in parallel by simply writing them one after another.
+
+.. code-block:: xml
+
+  <steps>
+    <step tasklist="hello-world" targets="local" />
+    <!-- and the same in parallel -->
+    <step tasklist="hello-world" targets="local" />
+  </steps>
+
+A sequential execution can be enforced by using `synchronized` (see later).
+Further, `loops` are supported, as well as `background` and `teardown` steps.
+
 Synchronization
 ~~~~~~~~~~~~~~~
 
