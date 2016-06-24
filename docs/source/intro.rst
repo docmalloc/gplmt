@@ -199,8 +199,10 @@ Defining Tasklists
 
 Tasklists must have a unique name, just as targets.
 
-A tasklist consists of a primitive task (`run`, `put`, `get`) or
-a composition element (`seq` or `par`).
+A Tasklist consists of a a composition element (`seq` or `par`).
+
+A composition element consists of a primitive task (`run`, `put`, `get`) or further composition elements.
+
 
 Running Commands
 ~~~~~~~~~~~~~~~~
