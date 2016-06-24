@@ -298,6 +298,34 @@ Further, `loops` are supported, as well as `background` and `teardown` steps.
 Synchronization
 ~~~~~~~~~~~~~~~
 
+Using the synchronize keyword steps are executed in sequence.
+
+.. code-block:: xml
+
+  <steps>
+    <step tasklist="hello-world" targets="local1" />
+    </ synchronize>
+    <step tasklist="hello-world" targets="local2" />
+  </steps>
+
+The tasklist is first executed on `local1`.
+After `local1`finished and returned, the tasklist is executed on `local2`.
+
+Additionally, selective synchronization is possible.
+
+.. code-block:: xml
+
+  <steps>
+    <step tasklist="longRunningTask" targets="local1" />
+    <step tasklist="hello-world" targets="local1" />
+    </ synchronize targets="local1">
+    <step tasklist="hello-world" targets="local2" />
+  </steps>
+
+The target definition allows to specify for which targets to wait for.
+`local2` will start execution after `local1`is finished but won't wait for `local`.
+In case of long-running tasks this can be helpful.
+
 Looping
 ~~~~~~~
 
