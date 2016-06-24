@@ -330,6 +330,7 @@ Looping
 ~~~~~~~
 
 GPLMT supports the following types of loops:
+
  * counted loops
  * until loops
  * duration loops
@@ -362,10 +363,74 @@ If an action has to be executed one after another a `synchronized statement add 
     </loop>
   </steps>
 
+Duration Loops
+**************
+
+A loop is executed during a given duration. (Note: without `synchronized` this means the task is scheduled during this periode.)
+
+.. code-block:: xml
+
+  <steps>
+    <loop duration="PT10S">
+      <step tasklist="loopbody" targets="mynode" />
+    </loop>
+  </steps>
+  
+Until Loops
+***********
+
+A loop is executed until a given point in time. (Note: without `synchronized` this means the task is scheduled during this periode.)
+
+.. code-block:: xml
+
+  <steps>
+    <loop until="2016-04-07T16:34:00">
+      <step tasklist="loopbody" targets="mynode" />
+    </loop>
+  </steps>
+  
+Listing Loops
+*************
+
+A loop that iterates over a given list of items that are used as variables within the execution.
+
+.. code-block:: xml
+
+  <steps>
+    <loop list="1:10" param="counter">
+        <step tasklist="printCounter" targets="local1 local2" />
+    </loop>
+    <loop list="a b c d" param="Text">
+        <step tasklist="printText" targets="local1 local2" />
+    </loop>
+  </steps>
 
 Background Steps
 ~~~~~~~~~~~~~~~~
 
+Steps can be marked as background steps.
+Those background steps do not influence the synchronize.
+This behavior is useful if monitoring tasks are executed.
+
+.. code-block:: xml
+
+  <steps>
+    <step tasklist="hello-world" targets="local" />
+    <step tasklist="sleep" targets="local" background='true' />
+  </steps>
+
 Teardown Steps
 ~~~~~~~~~~~~~~
 
+`teardowns`can be registered everywhere within an execution block and are executed at the end of an experiment.
+An execution block is within two synchronize blocks or start or end of the experiment.
+
+.. code-block:: xml
+
+  <steps>
+    <register-teardown tasklist="tx" targets="me" />
+    <step tasklist="t1" targets="me" />
+    <!-- could also be here -->
+    <step tasklist="t2" targets="me" />
+    <!-- or here, does not matter because of prescheduling -->
+  </steps>
