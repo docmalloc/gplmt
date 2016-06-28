@@ -5,6 +5,8 @@ Conducting experiments in federated, distributed, and heterogeneous testbeds is 
 
 Read more: http://arxiv.org/abs/1601.03984
 
+Some additional projects using GPLMT can be found [here](https://github.com/Egomania/TestbedAutomationTools)
+
 Documentation:
 ==============
 
