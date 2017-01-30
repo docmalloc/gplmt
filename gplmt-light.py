@@ -52,7 +52,7 @@ args = parser.parse_args()
 logging.basicConfig(
             format='%(asctime)s %(module)s %(levelname)s %(message)s',
             datefmt='%Y-%m-%d %T %Z',
-            level=logging.INFO)
+            level=logging.WARNING)
 
 experiment = gplmtlib.Experiment.from_file(args.experiment_file, settings=args)
 experiment.run_synchronous()

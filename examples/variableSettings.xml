@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  
+  <description>Variable Settings</description>
+
+  <targets>
+    <target name="local1" type="local">
+	<export-env var="me" value="local1"/>
+        <export-env var="inner" value="globalInner1"/>
+        <export-env var="outer" value="globalOuter1"/>
+	<export-env var="local" value="globalVariable1"/>
+	</target>
+    <target name="local2" type="local">
+	<export-env var="me" value="local2"/>
+        <export-env var="inner" value="globalInner2"/>
+        <export-env var="outer" value="globalOuter2"/>
+	<export-env var="local" value="globalVariable2"/>
+	</target>
+  </targets>
+
+  <tasklists>
+    <tasklist name="innerLoop">
+        <seq>
+		<run>echo XYZ I am $me in innerLoop outer = $outer inner = $inner local = $local</run>
+        </seq>
+    </tasklist>
+    <tasklist name="outerLoop">
+        <seq>
+		<run>echo XYZ I am $me in outerLoop outer = $outer inner = $inner local = $local</run>
+        </seq>
+    </tasklist>
+    <tasklist name="nonLoop">
+        <seq>
+		<run>echo XYZ I am $me no Loop outer = $outer inner = $inner local = $local</run>
+        </seq>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <loop list="1:2" param="outer">
+        <step tasklist="outerLoop" targets="local1 local2" />
+	    <loop list="a b" param="inner"> 
+		    <step tasklist="innerLoop" targets="local1 local2" />
+	    </loop>
+    </loop>
+    <step tasklist="nonLoop" targets="local1 local2" />
+    <synchronize />
+    <step tasklist="nonLoop" targets="local1 local2" />
+    <step tasklist="nonLoop" targets="local1 local2" >
+	<export-env var="local" value="localVariable2"/>
+    </step>
+    <loop list="1:2" param="outer">
+        <step tasklist="outerLoop" targets="local1 local2" />
+	    <loop list="a b" param="inner"> 
+		    <step tasklist="innerLoop" targets="local1 local2" >
+				<export-env var="local" value="localVariable2"/>
+    		</step>
+	    </loop>
+    </loop>
+
+  </steps>
+</experiment>

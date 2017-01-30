@@ -10,6 +10,10 @@
     <target name="local2" type="local">
 		<export-env var="me" value="local2"/>
 	</target>
+    <target name="asgard" type="ssh">
+        <user>root</user>
+        <host>asgard.net.in.tum.de</host>
+    </target>
   </targets>
 
   <tasklists>
@@ -26,9 +30,9 @@
   </tasklists>
 
   <steps>
-    <step tasklist="printMore" targets="local2" stop_relative="PT10S" />
-    <step tasklist="printMore" targets="local1" stop_relative="PT3S" /> 
-    <step tasklist="printMore" targets="local1" stop_absolute="2016-04-08T09:49:00" />
+    <step tasklist="printMore" targets="asgard" stop_relative="PT10S" />
+    <!-- <step tasklist="printMore" targets="local1" stop_relative="PT3S" /> 
+    <step tasklist="printMore" targets="local1" stop_absolute="2016-04-08T09:49:00" />-->
   </steps>
 
 </experiment>
