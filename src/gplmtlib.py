@@ -29,6 +29,7 @@ import xmlrpc.client
 import time
 import sys
 import subprocess
+import re
 from concurrent.futures import FIRST_COMPLETED
 from lxml.builder import E
 from contextlib import contextmanager
@@ -723,9 +724,24 @@ class Node:
         if task_xml.tag == 'put':
             source = find_text(task_xml, 'source')
             destination = find_text(task_xml, 'destination')
+            kp_str = task_xml.attrib.get("keep")
             # XXX: Just replace all environment variables
             source = source.replace("$GPLMT_TARGET", self.name)
             destination = destination.replace("$GPLMT_TARGET", self.name)
+
+            if kp_str is None or kp_str.lower() == 'false':
+                #Check for invalid characters, whitelisting
+                valid = re.compile("^([\.a-zA-Z][\-\.a-zA-Z]+)$")
+                if valid.match(destination):
+                    composedEnv = []
+                    tasklist = lxml.etree.Element("tasklist", name="cleanup")#on error?
+                    child1 = lxml.etree.SubElement(tasklist, "seq")
+                    child2 = lxml.etree.SubElement(child1, "run", name="_anon2")
+                    child2.text = ("rm " + destination)
+                    self.testbed.teardowns.append((self.name, tasklist, composedEnv))
+                else:
+                    logging.warning("no automated removal, invalid characters in destination: %s", destination)
+
             yield from self.put(source, destination)
             return
         if task_xml.tag in ('sequence', 'seq'):

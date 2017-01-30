@@ -194,6 +194,14 @@
   </define>
   <define name="put">
     <element name="put">
+    <optional>
+      <attribute name="keep">
+        <choice>
+          <value>true</value>
+          <value>false</value>
+        </choice>
+      </attribute>
+    </optional>
       <ref name="copy_body"/>
     </element>
   </define>

@@ -199,8 +199,10 @@ Defining Tasklists
 
 Tasklists must have a unique name, just as targets.
 
-A tasklist consists of a primitive task (`run`, `put`, `get`) or
-a composition element (`seq` or `par`).
+A Tasklist consists of a a composition element (`seq` or `par`).
+
+A composition element consists of a primitive task (`run`, `put`, `get`) or further composition elements.
+
 
 Running Commands
 ~~~~~~~~~~~~~~~~
@@ -270,15 +272,165 @@ The possible values are:
 Defining the Execution Plan
 ---------------------------
 
+An execution plan is the combination of targets and tasklists within the step definition.
+
+.. code-block:: xml
+
+  <steps>
+    <step tasklist="hello-world" targets="local" />
+  </steps>
+
+The execution of tasklist `hello-world` is bound to target `local`.
+
+Steps can be organized to be executed in parallel by simply writing them one after another.
+
+.. code-block:: xml
+
+  <steps>
+    <step tasklist="hello-world" targets="local" />
+    <!-- and the same in parallel -->
+    <step tasklist="hello-world" targets="local" />
+  </steps>
+
+A sequential execution can be enforced by using `synchronized` (see later).
+Further, `loops` are supported, as well as `background` and `teardown` steps.
+
 Synchronization
 ~~~~~~~~~~~~~~~
+
+Using the synchronize keyword steps are executed in sequence.
+
+.. code-block:: xml
+
+  <steps>
+    <step tasklist="hello-world" targets="local1" />
+    </synchronize>
+    <step tasklist="hello-world" targets="local2" />
+  </steps>
+
+The tasklist is first executed on `local1`.
+After `local1`finished and returned, the tasklist is executed on `local2`.
+
+Additionally, selective synchronization is possible.
+
+.. code-block:: xml
+
+  <steps>
+    <step tasklist="longRunningTask" targets="local1" />
+    <step tasklist="hello-world" targets="local1" />
+    </synchronize targets="local1">
+    <step tasklist="hello-world" targets="local2" />
+  </steps>
+
+The target definition allows to specify for which targets to wait for.
+`local2` will start execution after `local1`is finished but won't wait for `local`.
+In case of long-running tasks this can be helpful.
 
 Looping
 ~~~~~~~
 
+GPLMT supports the following types of loops:
+
+ * counted loops
+ * until loops
+ * duration loops
+ * listing loops
+
+All loops in GPLMT are implemented such that they do not implicitely synchronize after the first round of execution.
+This has to be enforced using the `synchronized` statement (see `Counted Loops` for an example).
+
+Counted Loops
+*************
+
+Counted loops simply schedule the steps within the loop body as often as specified in repeat.
+
+.. code-block:: xml
+
+  <steps>
+    <loop repeat="5">
+      <step tasklist="loopbody" targets="mynode" />
+    </loop>
+  </steps>
+  
+If an action has to be executed one after another a `synchronized statement add the end is needed.
+
+.. code-block:: xml
+
+  <steps>
+    <loop repeat="5">
+      <step tasklist="loopbody" targets="mynode" />
+      </synchronize>
+    </loop>
+  </steps>
+
+Duration Loops
+**************
+
+A loop is executed during a given duration. (Note: without `synchronized` this means the task is scheduled during this periode.)
+
+.. code-block:: xml
+
+  <steps>
+    <loop duration="PT10S">
+      <step tasklist="loopbody" targets="mynode" />
+    </loop>
+  </steps>
+  
+Until Loops
+***********
+
+A loop is executed until a given point in time. (Note: without `synchronized` this means the task is scheduled during this periode.)
+
+.. code-block:: xml
+
+  <steps>
+    <loop until="2016-04-07T16:34:00">
+      <step tasklist="loopbody" targets="mynode" />
+    </loop>
+  </steps>
+  
+Listing Loops
+*************
+
+A loop that iterates over a given list of items that are used as variables within the execution.
+
+.. code-block:: xml
+
+  <steps>
+    <loop list="1:10" param="counter">
+        <step tasklist="printCounter" targets="local1 local2" />
+    </loop>
+    <loop list="a b c d" param="Text">
+        <step tasklist="printText" targets="local1 local2" />
+    </loop>
+  </steps>
+
 Background Steps
 ~~~~~~~~~~~~~~~~
+
+Steps can be marked as background steps.
+Those background steps do not influence the synchronize.
+This behavior is useful if monitoring tasks are executed.
+
+.. code-block:: xml
+
+  <steps>
+    <step tasklist="hello-world" targets="local" />
+    <step tasklist="sleep" targets="local" background='true' />
+  </steps>
 
 Teardown Steps
 ~~~~~~~~~~~~~~
 
+`teardowns`can be registered everywhere within an execution block and are executed at the end of an experiment.
+An execution block is within two synchronize blocks or start or end of the experiment.
+
+.. code-block:: xml
+
+  <steps>
+    <register-teardown tasklist="tx" targets="me" />
+    <step tasklist="t1" targets="me" />
+    <!-- could also be here -->
+    <step tasklist="t2" targets="me" />
+    <!-- or here, does not matter because of prescheduling -->
+  </steps>

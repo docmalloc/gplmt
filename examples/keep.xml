@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<experiment>
+  <description>Keep example</description>
+
+  <targets>
+    <target name="ubuntu16" type="ssh">
+      <user>chris</user>
+      <host>192.168.30.1</host>
+    </target>
+  </targets>
+
+  <tasklists>
+    <tasklist name="put1">
+      <seq>
+        <put keep="true">
+          <source>myfile.txt</source>
+          <destination>keep.txt</destination>
+        </put>
+      </seq>
+    </tasklist>
+    <tasklist name="put2">
+      <seq>
+        <put keep="false">
+          <source>myfile.txt</source>
+          <destination>donotkeep.txt</destination>
+        </put>
+      </seq>
+    </tasklist>
+    <tasklist name="put3">
+      <seq>
+        <put>
+          <source>myfile.txt</source>
+          <destination>donotkeep2.txt</destination>
+        </put>
+      </seq>
+    </tasklist>
+  </tasklists>
+
+  <steps>
+    <step tasklist="put1" targets="ubuntu16" />
+    <step tasklist="put2" targets="ubuntu16" />
+    <step tasklist="put3" targets="ubuntu16" />
+  </steps>
+
+</experiment>
